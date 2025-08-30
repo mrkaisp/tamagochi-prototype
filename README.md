@@ -416,3 +416,143 @@ class GameConfig:
 - [Docker公式ドキュメント](https://docs.docker.com/)
 - [VcXsrv公式サイト](https://sourceforge.net/projects/vcxsrv/)
 - [XQuartz公式サイト](https://www.xquartz.org/)
+
+## GitHubにアップロードする手順
+
+### 1. .gitignoreファイルの作成
+
+まず、不要なファイルを除外するための`.gitignore`ファイルを作成しましょう：
+
+```gitignore
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pygame
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Save files (optional - セーブデータも含めたい場合は削除)
+save/state.json
+
+# Temporary files
+*.tmp
+*.temp
+```
+
+### 2. GitHubリポジトリの作成
+
+1. **GitHubにアクセス**: https://github.com にログイン
+2. **新しいリポジトリを作成**:
+   - 「New repository」をクリック
+   - リポジトリ名: `tamagotchi-prototype`
+   - 説明: `A Tamagotchi-style pet raising game built with Python and Pygame`
+   - Public/Privateを選択
+   - 「Create repository」をクリック
+
+### 3. ローカルでGitリポジトリを初期化
+
+PowerShellで以下のコマンドを実行：
+
+```powershell
+# プロジェクトディレクトリに移動
+cd "C:\Users\kai\20250830_たまごっち\tamagotchi-prototype"
+
+# Gitリポジトリを初期化
+git init
+
+# ファイルをステージング
+git add .
+
+# 初回コミット
+git commit -m "Initial commit: Tamagotchi prototype game
+
+- Python/Pygame based pet raising game
+- 128x128 pixel resolution with 4x scaling
+- Real-time pet care system
+- Docker support for cross-platform development
+- Event-driven architecture
+- Auto-save functionality"
+
+# リモートリポジトリを追加（YOUR_USERNAMEを実際のGitHubユーザー名に変更）
+git remote add origin https://github.com/YOUR_USERNAME/tamagotchi-prototype.git
+
+# メインブランチをmainに変更（推奨）
+git branch -M main
+
+# GitHubにプッシュ
+git push -u origin main
+```
+
+### 4. リポジトリの設定
+
+GitHubリポジトリページで以下を設定：
+
+1. **Topicsを追加**:
+   - `python`
+   - `pygame`
+   - `game`
+   - `tamagotchi`
+   - `pet-simulation`
+   - `docker`
+
+2. **READMEの改善**:
+   - 現在のREADMEは既に非常に詳細で素晴らしいです
+   - 必要に応じて、GitHubのREADME.mdに追加情報を記載
+
+### 5. 追加で推奨するファイル
+
+#### LICENSEファイル（MITライセンス）
+```markdown
+MIT License
+
+Copyright (c) 2024 [Your Name]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY K

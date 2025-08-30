@@ -1,7 +1,51 @@
+# Python
 __pycache__/
-.pytest_cache/
-.venv/
-.DS_Store
-.idea/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pygame
+*.log
+
+# IDE
 .vscode/
-save/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Save files (optional - セーブデータも含めたい場合は削除)
+save/state.json
+
+# Temporary files
+*.tmp
+*.temp
