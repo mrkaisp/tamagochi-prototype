@@ -417,142 +417,174 @@ class GameConfig:
 - [VcXsrv公式サイト](https://sourceforge.net/projects/vcxsrv/)
 - [XQuartz公式サイト](https://www.xquartz.org/)
 
-## GitHubにアップロードする手順
+## 🌿 Featureブランチを使ったローカル開発
 
-### 1. .gitignoreファイルの作成
+### 開発ワークフロー
 
-まず、不要なファイルを除外するための`.gitignore`ファイルを作成しましょう：
+#### 1. 新しい機能開発の開始
 
-```gitignore
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+```bash
+# 最新のmainブランチを取得
+git checkout main
+git pull origin main
 
-# Pygame
-*.log
+# 新しいfeatureブランチを作成
+git checkout -b feature/新機能名
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Docker
-.dockerignore
-
-# Save files (optional - セーブデータも含めたい場合は削除)
-save/state.json
-
-# Temporary files
-*.tmp
-*.temp
+# 例：
+git checkout -b feature/add-minigame
+git checkout -b feature/improve-ui
+git checkout -b feature/add-sound-effects
 ```
 
-### 2. GitHubリポジトリの作成
+#### 2. 開発中の作業
 
-1. **GitHubにアクセス**: https://github.com にログイン
-2. **新しいリポジトリを作成**:
-   - 「New repository」をクリック
-   - リポジトリ名: `tamagotchi-prototype`
-   - 説明: `A Tamagotchi-style pet raising game built with Python and Pygame`
-   - Public/Privateを選択
-   - 「Create repository」をクリック
+```bash
+# ファイルを編集後、変更を確認
+git status
 
-### 3. ローカルでGitリポジトリを初期化
-
-PowerShellで以下のコマンドを実行：
-
-```powershell
-# プロジェクトディレクトリに移動
-cd "C:\Users\kai\20250830_たまごっち\tamagotchi-prototype"
-
-# Gitリポジトリを初期化
-git init
-
-# ファイルをステージング
+# 変更したファイルをステージング
+git add ファイル名
+# または全ての変更をステージング
 git add .
 
-# 初回コミット
-git commit -m "Initial commit: Tamagotchi prototype game
+# コミット
+git commit -m "feat: 新機能の説明
 
-- Python/Pygame based pet raising game
-- 128x128 pixel resolution with 4x scaling
-- Real-time pet care system
-- Docker support for cross-platform development
-- Event-driven architecture
-- Auto-save functionality"
+- 具体的な変更内容1
+- 具体的な変更内容2"
 
-# リモートリポジトリを追加（YOUR_USERNAMEを実際のGitHubユーザー名に変更）
-git remote add origin https://github.com/YOUR_USERNAME/tamagotchi-prototype.git
-
-# メインブランチをmainに変更（推奨）
-git branch -M main
-
-# GitHubにプッシュ
-git push -u origin main
+# 開発中は定期的にコミット
+git commit -m "WIP: 作業中の機能"
 ```
 
-### 4. リポジトリの設定
+#### 3. 開発の完了とマージ
 
-GitHubリポジトリページで以下を設定：
+```bash
+# 最後にmainブランチの最新変更を取得
+git checkout main
+git pull origin main
 
-1. **Topicsを追加**:
-   - `python`
-   - `pygame`
-   - `game`
-   - `tamagotchi`
-   - `pet-simulation`
-   - `docker`
+# featureブランチに戻る
+git checkout feature/新機能名
 
-2. **READMEの改善**:
-   - 現在のREADMEは既に非常に詳細で素晴らしいです
-   - 必要に応じて、GitHubのREADME.mdに追加情報を記載
+# mainブランチの変更をfeatureブランチにマージ
+git merge main
 
-### 5. 追加で推奨するファイル
+# コンフリクトがあれば解決後、再度コミット
+git add .
+git commit -m "merge: mainブランチの変更をマージ"
 
-#### LICENSEファイル（MITライセンス）
-```markdown
-MIT License
+# featureブランチをmainにマージ
+git checkout main
+git merge feature/新機能名
 
-Copyright (c) 2024 [Your Name]
+# 不要になったfeatureブランチを削除
+git branch -d feature/新機能名
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+# GitHubにプッシュ
+git push origin main
+```
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+### ブランチ命名規則
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY K
+```bash
+# 新機能の追加
+feature/機能名
+例: feature/add-pet-evolution
+
+# バグ修正
+fix/修正内容
+例: fix/hunger-rate-calculation
+
+# ドキュメント更新
+docs/更新内容
+例: docs/update-readme
+
+# リファクタリング
+refactor/変更内容
+例: refactor/event-system
+
+# テスト追加
+test/テスト内容
+例: test/add-pet-state-tests
+```
+
+### コミットメッセージの書き方
+
+```bash
+# 新機能追加
+git commit -m "feat: 新しい機能を追加"
+
+# バグ修正
+git commit -m "fix: バグを修正"
+
+# ドキュメント更新
+git commit -m "docs: ドキュメントを更新"
+
+# コードスタイル修正
+git commit -m "style: コードスタイルを修正"
+
+# リファクタリング
+git commit -m "refactor: コードをリファクタリング"
+
+# テスト追加
+git commit -m "test: テストを追加"
+
+# 作業中（Work In Progress）
+git commit -m "WIP: 作業中の機能"
+```
+
+### 開発時のベストプラクティス
+
+#### 1. 小さなコミットを心がける
+```bash
+# 良い例：機能ごとに分けてコミット
+git add src/game/entities/pet_state.py
+git commit -m "feat: ペットの進化システムを追加"
+
+git add src/game/ui/components.py
+git commit -m "feat: 進化表示UIを追加"
+
+# 悪い例：大量の変更を一度にコミット
+git add .
+git commit -m "いろいろ追加"
+```
+
+#### 2. 開発前の準備
+```bash
+# 作業開始前
+git checkout main
+git pull origin main
+git checkout -b feature/新機能名
+
+# 作業終了時
+git push origin feature/新機能名  # リモートに保存
+```
+
+#### 3. コンフリクトの解決
+```bash
+# コンフリクトが発生した場合
+git status  # コンフリクトファイルを確認
+
+# ファイルを編集してコンフリクトを解決
+# <<<<<<< HEAD から ======= までの部分を編集
+
+# 解決後
+git add .
+git commit -m "resolve: コンフリクトを解決"
+```
+
+### 開発環境でのテスト
+
+```bash
+# 機能開発中は定期的にテスト
+python -m src.main
+
+# テストファイルがある場合
+python -m pytest tests/
+
+# Docker環境でのテスト
+docker-compose -f docker-compose.macwin.yml up --build
+```
+
