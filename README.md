@@ -1,27 +1,168 @@
 # たまごっちプロトタイプ
 
-## 🎮 ゲーム概要
+## �� プロジェクト概要
 
-このプロジェクトは、クラシックなたまごっち風のペット育成ゲームです。デジタルペットを育て、餌を与え、遊び、掃除して、幸せで健康な状態を保ちましょう。
+クラシックなたまごっち風のペット育成ゲームです。デジタルペットを育て、餌を与え、遊び、掃除して、幸せで健康な状態を保ちましょう。
 
 ### ゲームの特徴
-- **リアルタイム育成**: ペットは時間とともに状態が変化します
+- **リアルタイム育成**: ペットは時間とともに状態が変化
 - **複数のケア要素**: 空腹度、幸福度、清潔度、健康状態を管理
-- **自動セーブ機能**: ゲームの進行状況が自動的に保存されます
-- **直感的な操作**: シンプルなキー操作でペットのお世話ができます
+- **自動セーブ機能**: ゲームの進行状況が自動的に保存
+- **直感的な操作**: シンプルなキー操作でペットのお世話
 - **ピクセルアート風UI**: レトロな見た目のゲーム画面
 
-## AI開発者向け重要制約
+## 🚀 共同開発者向けクイックスタート
 
-### 描画制約
+### 前提条件
+- [Git](https://git-scm.com/) がインストールされていること
+- [Docker](https://www.docker.com/) がインストールされていること
+- GitHubアカウントを持っていること
+- リポジトリへのコラボレーター権限が付与されていること
+
+### 1. 環境セットアップ
+
+#### リポジトリのクローン
+```bash
+# Windows
+git clone https://github.com/mrkaisp/tamagotchi-prototype.git
+cd tamagotchi-prototype
+
+# macOS
+git clone https://github.com/mrkaisp/tamagotchi-prototype.git
+cd tamagotchi-prototype
+```
+
+#### GUI表示の設定
+
+**Windows:**
+1. [VcXsrv](https://sourceforge.net/projects/vcxsrv/)をダウンロード・インストール
+2. XLaunchを起動し、設定：
+   - Step 1: 「Multiple windows」選択
+   - Step 2: 「Start no client」選択
+   - Step 3: 「Disable access control」と「Native opengl」にチェック
+   - Step 4: 「Finish」クリック
+3. 環境変数設定：
+   ```cmd
+   set DISPLAY=localhost:0.0
+   ```
+
+**macOS:**
+1. [XQuartz](https://www.xquartz.org/)をダウンロード・インストール
+2. XQuartzを起動
+3. 環境変数設定：
+   ```bash
+   export DISPLAY=:0
+   ```
+
+#### Dockerコンテナの起動
+```bash
+# Docker Desktopを起動後
+docker-compose -f docker-compose.macwin.yml up --build
+```
+
+### 2. 開発ワークフロー
+
+#### 新しい機能開発の開始
+```bash
+# 最新のmainブランチを取得
+git checkout main
+git pull origin main
+
+# 新しいfeatureブランチを作成
+git checkout -b feature/新機能名
+# 例: git checkout -b feature/add-minigame
+```
+
+#### 開発中の作業
+```bash
+# 変更を確認
+git status
+
+# 変更をステージング
+git add ファイル名
+# または全て: git add .
+
+# コミット
+git commit -m "feat: 新機能の説明"
+
+# 定期的にコミット（作業中）
+git commit -m "WIP: 作業中の機能"
+```
+
+#### 開発完了とプルリクエスト
+```bash
+# mainブランチの最新変更を取得
+git checkout main
+git pull origin main
+
+# featureブランチに戻ってマージ
+git checkout feature/新機能名
+git merge main
+
+# コンフリクトがあれば解決後コミット
+git add .
+git commit -m "merge: mainブランチの変更をマージ"
+
+# GitHubにプッシュ
+git push origin feature/新機能名
+```
+
+#### プルリクエストの作成
+1. GitHubで「Pull requests」タブをクリック
+2. 「New pull request」をクリック
+3. ベースブランチ（main）と比較ブランチ（feature/新機能名）を選択
+4. タイトルと説明を記入
+5. 「Create pull request」をクリック
+
+### 3. 開発ルール
+
+#### ブランチ命名規則
+```bash
+feature/新機能名    # 新機能の追加
+fix/バグ修正名      # バグ修正
+docs/ドキュメント名  # ドキュメント更新
+refactor/変更内容    # リファクタリング
+test/テスト内容      # テスト追加
+```
+
+#### コミットメッセージの書き方
+```bash
+feat: 新しい機能を追加
+fix: バグを修正
+docs: ドキュメントを更新
+style: コードスタイルを修正
+refactor: コードをリファクタリング
+test: テストを追加
+WIP: 作業中の機能
+```
+
+#### ベストプラクティス
+- **小さなコミット**: 機能ごとに分けてコミット
+- **定期的なテスト**: 開発中は頻繁にテスト実行
+- **ドキュメント更新**: コード変更に合わせてドキュメントも更新
+
+### 4. テストの実行
+
+```bash
+# 機能開発中は定期的にテスト
+python -m src.main
+
+# テストファイルがある場合
+python -m pytest tests/
+
+# Docker環境でのテスト
+docker-compose -f docker-compose.macwin.yml up --build
+```
+
+## �� 開発者向け重要情報
+
+### 描画制約（必須）
 **必ず128ピクセル×128ピクセルの論理解像度で描画してください。**
 
-- ゲームの論理解像度は128×128ピクセルに固定されています
-- すべてのUI要素、キャラクター、テキストはこの範囲内に収める必要があります
-- 物理的な画面サイズは4倍スケール（512×512ピクセル）で表示されますが、描画座標は128×128の範囲で計算してください
-- この制約を守らないと、ゲーム画面が正しく表示されません
+- ゲームの論理解像度は128×128ピクセルに固定
+- すべてのUI要素、キャラクター、テキストはこの範囲内に収める必要
+- 物理的な画面サイズは4倍スケール（512×512ピクセル）で表示されるが、描画座標は128×128の範囲で計算
 
-### 座標系の例
 ```python
 # 正しい例：128×128の範囲内
 pg.draw.rect(surface, color, (10, 10, 20, 20))  # 左上付近
@@ -31,11 +172,32 @@ pg.draw.rect(surface, color, (100, 100, 25, 25))  # 右下付近
 pg.draw.rect(surface, color, (200, 200, 50, 50))  # 範囲外
 ```
 
-## ゲームシステム詳細
+### プロジェクト構造
+src/
+├── main.py # エントリーポイント
+├── game/
+│ ├── core/ # ゲームエンジンとコアシステム
+│ │ ├── game_engine.py # メインゲームエンジン
+│ │ ├── input_handler.py # 入力処理
+│ │ └── event_system.py # イベントシステム
+│ ├── entities/ # ゲームエンティティ
+│ │ ├── tamagotchi.py # たまごっちメインクラス
+│ │ └── pet_state.py # ペット状態管理
+│ ├── ui/ # UIシステム
+│ │ ├── components.py # UIコンポーネント
+│ │ ├── renderer.py # レンダリング管理
+│ │ ├── display.py # ディスプレイ管理
+│ │ └── font_manager.py # フォント管理
+│ ├── data/ # データ管理
+│ │ ├── config.py # 設定管理
+│ │ └── save_manager.py # セーブデータ管理
+│ └── utils/ # ユーティリティ
+│ └── helpers.py # ヘルパー関数
 
-### ペットの状態管理
 
-#### 基本統計情報
+### ゲームシステム詳細
+
+#### ペットの状態管理
 - **空腹度 (Hunger)**: 0（満腹）〜 100（腹ペコ）
   - 自然変化: 1秒あたり +2.0
   - 餌効果: -35.0
@@ -57,14 +219,7 @@ pg.draw.rect(surface, color, (200, 200, 50, 50))  # 範囲外
 - 清潔度 ≤ 25.0
 - うんち数 > 3個
 
-#### 健康状態表示
-- **病気**: 病気状態
-- **空腹**: 空腹度 > 80
-- **汚い**: 清潔度 < 30
-- **悲しい**: 幸福度 < 30
-- **健康**: 上記以外
-
-### ゲームの操作方法
+#### ゲームの操作方法
 - `1`: 餌を与える
 - `2`: 遊ぶ
 - `3`: 掃除する
@@ -73,294 +228,7 @@ pg.draw.rect(surface, color, (200, 200, 50, 50))  # 範囲外
 - `F1`: デバッグモード
 - `ESC`: ゲーム終了
 
-### ゲーム画面構成
-- **メイン画面**: 128×128ピクセルの論理解像度
-- **スケール**: 4倍拡大表示（512×512ピクセル）
-- **フレームレート**: 30 FPS
-- **UI要素**:
-  - ペットのキャラクター表示
-  - 状態バー（空腹度、幸福度、清潔度）
-  - 年齢表示
-  - うんちアイコン
-  - 健康状態表示
-
-## 🚀 開発環境のセットアップ
-
-### 前提条件
-- [Git](https://git-scm.com/) がインストールされていること
-- [Docker](https://www.docker.com/) がインストールされていること
-- [Cursor](https://cursor.sh/) エディタ（推奨）
-
-### 1. リポジトリのクローン
-
-#### Windowsの場合
-1. **ターミナルを開く**
-   - Windowsキー + R を押す
-   - `cmd` と入力してEnter
-   - または、Windowsキーを押して「コマンドプロンプト」を検索して開く
-
-2. **作業ディレクトリに移動**
-   ```cmd
-   cd C:\Users\ユーザー名\Desktop
-   ```
-
-3. **リポジトリをクローン**
-   ```cmd
-   git clone https://github.com/your-username/tamagotchi-prototype.git
-   cd tamagotchi-prototype
-   ```
-
-#### macOSの場合
-1. **ターミナルを開く**
-   - Finderを開く
-   - アプリケーション → ユーティリティ → ターミナルをダブルクリック
-   - または、Spotlight（Cmd + Space）で「ターミナル」を検索
-
-2. **作業ディレクトリに移動**
-   ```bash
-   cd ~/Desktop
-   ```
-
-3. **リポジトリをクローン**
-   ```bash
-   git clone https://github.com/your-username/tamagotchi-prototype.git
-   cd tamagotchi-prototype
-   ```
-
-### 2. GUI表示の設定
-
-#### Windowsの場合
-1. **VcXsrvをインストール**
-   - [VcXsrv公式サイト](https://sourceforge.net/projects/vcxsrv/)にアクセス
-   - 「Download」ボタンをクリック
-   - ダウンロードしたファイルを実行してインストール
-
-2. **XLaunchを起動**
-   - スタートメニューから「XLaunch」を検索して起動
-   - または、デスクトップの「XLaunch」アイコンをダブルクリック
-
-3. **XLaunchの設定**
-   - **Step 1**: 「Multiple windows」を選択 → 「Next」
-   - **Step 2**: 「Start no client」を選択 → 「Next」
-   - **Step 3**: 「Extra settings」で以下をチェック：
-     - ✅ 「Disable access control」
-     - ✅ 「Native opengl」
-   - **Step 4**: 「Finish」をクリック
-
-4. **環境変数を設定**
-   ```cmd
-   set DISPLAY=localhost:0.0
-   ```
-
-#### macOSの場合
-1. **XQuartzをインストール**
-   - [XQuartz公式サイト](https://www.xquartz.org/)にアクセス
-   - 「XQuartz-2.8.5.dmg」をダウンロード
-   - ダウンロードしたファイルをダブルクリック
-   - インストーラーを実行
-
-2. **XQuartzを起動**
-   - アプリケーション → ユーティリティ → XQuartzをダブルクリック
-   - 初回起動時は設定をそのまま「OK」で進める
-
-3. **環境変数を設定**
-   ```bash
-   export DISPLAY=:0
-   ```
-
-### 3. Dockerコンテナの起動
-
-#### Windowsの場合
-1. **Docker Desktopを起動**
-   - Windowsキーを押して「Docker Desktop」を検索
-   - Docker Desktopをダブルクリックして起動
-   - タスクバーにDockerのアイコンが表示されるまで待つ
-
-2. **ターミナルでコンテナを起動**
-   ```cmd
-   docker-compose -f docker-compose.macwin.yml up --build
-   ```
-
-#### macOSの場合
-1. **Docker Desktopを起動**
-   - Finderを開く
-   - アプリケーション → Docker → Docker Desktopをダブルクリック
-   - メニューバーにDockerのアイコンが表示されるまで待つ
-
-2. **ターミナルでコンテナを起動**
-   ```bash
-   docker-compose -f docker-compose.macwin.yml up --build
-   ```
-
-### 4. Cursorでの開発
-
-1. **Cursorをインストール（未インストールの場合）**
-   - [Cursor公式サイト](https://cursor.sh/)にアクセス
-   - 「Download」ボタンをクリック
-   - ダウンロードしたファイルを実行してインストール
-
-2. **Cursorでプロジェクトを開く**
-   - Cursorを起動
-   - 「Open Folder」をクリック
-   - クローンした`tamagotchi-prototype`フォルダを選択
-
-3. **コンテナ内で開発**
-   - 新しいターミナルを開く（Cursor内でCtrl + ` または Cmd + `）
-   - コンテナに接続
-   ```bash
-   docker exec -it tamagotchi-pygame bash
-   ```
-
-4. **ゲームの実行**
-   ```bash
-   python -m src.main
-   ```
-
-### 5. GUI表示の確認
-
-ゲームが正常に起動すると、以下のようなウィンドウが表示されます：
-- **ウィンドウタイトル**: "Tamagotchi Prototype (512x512)"
-- **ウィンドウサイズ**: 512×512ピクセル
-- **ゲーム画面**: 128×128ピクセルの論理解像度を4倍拡大表示
-
-## トラブルシューティング
-
-### GUIが表示されない場合
-
-#### Windows
-1. **VcXsrvが起動しているか確認**
-   - タスクバーにXLaunchアイコンがあるか確認
-   - ない場合はXLaunchを再起動
-
-2. **環境変数を再設定**
-   ```cmd
-   set DISPLAY=localhost:0.0
-   ```
-
-3. **ファイアウォールの設定**
-   - WindowsファイアウォールでVcXsrvを許可
-   - または一時的にファイアウォールを無効化
-
-#### macOS
-1. **XQuartzが起動しているか確認**
-   - メニューバーにXQuartzアイコンがあるか確認
-   - ない場合はXQuartzを再起動
-
-2. **環境変数を再設定**
-   ```bash
-   export DISPLAY=:0
-   ```
-
-3. **セキュリティ設定**
-   - システム環境設定 → セキュリティとプライバシー
-   - XQuartzの実行を許可
-
-### その他の問題
-- **Dockerコンテナが起動しない**: Docker Desktopが起動しているか確認
-- **ゲームがクラッシュする**: ログファイル（tamagotchi.log）を確認
-- **パフォーマンスが悪い**: 他のアプリケーションを終了してリソースを確保
-
-## 共同開発の方法
-
-### 初心者向けガイド
-
-#### 1. 開発の流れ
-1. **Issueの確認**: GitHubのIssuesタブで現在の課題を確認
-2. **ブランチの作成**: 新しい機能や修正用のブランチを作成
-3. **開発**: コードを書いてテスト
-4. **プルリクエスト**: 変更をレビューしてもらうためにPRを作成
-5. **マージ**: 承認されたらメインブランチにマージ
-
-#### 2. ブランチ命名規則
-```
-feature/新機能名    # 新機能の追加
-fix/バグ修正名      # バグ修正
-docs/ドキュメント名  # ドキュメント更新
-```
-
-#### 3. コミットメッセージの書き方
-```
-feat: 新しい機能を追加
-fix: バグを修正
-docs: ドキュメントを更新
-style: コードスタイルを修正
-refactor: コードをリファクタリング
-test: テストを追加
-```
-
-#### 4. プルリクエストの作成手順
-1. GitHubで「Pull requests」タブをクリック
-2. 「New pull request」をクリック
-3. ベースブランチ（通常は`main`）と比較ブランチを選択
-4. タイトルと説明を記入
-5. 「Create pull request」をクリック
-
-### 開発者向け情報
-
-#### プロジェクト構造
-```
-src/
-├── main.py                 # エントリーポイント
-├── game/
-│   ├── core/              # ゲームエンジンとコアシステム
-│   │   ├── game_engine.py # メインゲームエンジン
-│   │   ├── input_handler.py # 入力処理
-│   │   └── event_system.py # イベントシステム
-│   ├── entities/          # ゲームエンティティ
-│   │   ├── tamagotchi.py  # たまごっちメインクラス
-│   │   └── pet_state.py   # ペット状態管理
-│   ├── ui/                # UIシステム
-│   │   ├── components.py  # UIコンポーネント
-│   │   ├── renderer.py    # レンダリング管理
-│   │   ├── display.py     # ディスプレイ管理
-│   │   └── font_manager.py # フォント管理
-│   ├── data/              # データ管理
-│   │   ├── config.py      # 設定管理
-│   │   └── save_manager.py # セーブデータ管理
-│   └── utils/             # ユーティリティ
-│       └── helpers.py     # ヘルパー関数
-```
-
-#### 新しい機能の追加方法
-
-##### 1. 新しいイベントタイプの追加
-```python
-# src/game/core/event_system.py
-class EventType(Enum):
-    NEW_FEATURE = auto()
-```
-
-##### 2. 新しいUIコンポーネントの追加
-```python
-# src/game/ui/components.py
-class NewComponent(UIComponent):
-    def draw(self, surface):
-        # 描画処理（必ず128×128の範囲内で描画）
-        pass
-```
-
-##### 3. 新しいペットアクションの追加
-```python
-# src/game/entities/pet_state.py
-def new_action(self) -> None:
-    """新しいアクション"""
-    # アクション処理
-    pass
-```
-
-#### テストの実行
-```bash
-# テストを実行
-python -m pytest tests/
-
-# 特定のテストを実行
-python -m pytest tests/test_pet_state.py
-
-# カバレッジ付きでテスト実行
-python -m pytest tests/ --cov=src
-```
-
-#### 設定の変更
+#### 4. 設定の変更
 ```python
 # src/game/data/config.py
 @dataclass
@@ -381,210 +249,36 @@ class GameConfig:
 - **Docker**: 開発環境の統一
 - **Git**: バージョン管理
 
-### 主要な技術的特徴
-- **イベント駆動アーキテクチャ**: 疎結合なシステム設計
-- **コンポーネントベースUI**: 再利用可能なUIコンポーネント
-- **自動セーブシステム**: 30秒間隔での自動保存
-- **設定可能なゲームバランス**: データクラスによる設定管理
-- **ピクセルパーフェクト表示**: レトロゲーム風の表示
+## 🔧 トラブルシューティング
 
-## 📝 ライセンス
+### GUIが表示されない場合
+- VcXsrv/XQuartzが起動しているか確認
+- 環境変数（DISPLAY）が正しく設定されているか確認
+- ファイアウォールの設定を確認
 
-このプロジェクトはMITライセンスの下で公開されています。
+### Git関連の問題
+```bash
+# 変更を破棄して最新の状態に戻す
+git checkout -- ファイル名
 
-## 貢献
+# ブランチを削除
+git branch -d ブランチ名
 
-このプロジェクトへの貢献を歓迎します！以下の方法で参加できます：
+# リモートの最新状態を取得
+git fetch origin
+git reset --hard origin/main
+```
 
-1. **バグ報告**: Issuesでバグを報告
-2. **機能提案**: 新しい機能のアイデアを提案
-3. **コード貢献**: プルリクエストでコードを提供
-4. **ドキュメント改善**: READMEやコメントの改善
+### その他の問題
+- **Dockerコンテナが起動しない**: Docker Desktopが起動しているか確認
+- **ゲームがクラッシュする**: ログファイル（tamagotchi.log）を確認
+- **パフォーマンスが悪い**: 他のアプリケーションを終了してリソースを確保
 
-何か質問がある場合は、Issuesでお気軽にお聞きください！
 
-## ⚠️ 既知の問題
-
-- Windows/macOSではDocker Desktopの起動が必要
-- 初回起動時はDockerイメージのダウンロードに時間がかかる場合があります
-- GUI表示にはX11サーバー（VcXsrv/XQuartz）の設定が必要
-
-## 参考資料
+## �� 参考資料
 
 - [Pygame公式ドキュメント](https://www.pygame.org/docs/)
 - [Python公式ドキュメント](https://docs.python.org/3/)
 - [Docker公式ドキュメント](https://docs.docker.com/)
 - [VcXsrv公式サイト](https://sourceforge.net/projects/vcxsrv/)
 - [XQuartz公式サイト](https://www.xquartz.org/)
-
-## 🌿 Featureブランチを使ったローカル開発
-
-### 開発ワークフロー
-
-#### 1. 新しい機能開発の開始
-
-```bash
-# 最新のmainブランチを取得
-git checkout main
-git pull origin main
-
-# 新しいfeatureブランチを作成
-git checkout -b feature/新機能名
-
-# 例：
-git checkout -b feature/add-minigame
-git checkout -b feature/improve-ui
-git checkout -b feature/add-sound-effects
-```
-
-#### 2. 開発中の作業
-
-```bash
-# ファイルを編集後、変更を確認
-git status
-
-# 変更したファイルをステージング
-git add ファイル名
-# または全ての変更をステージング
-git add .
-
-# コミット
-git commit -m "feat: 新機能の説明
-
-- 具体的な変更内容1
-- 具体的な変更内容2"
-
-# 開発中は定期的にコミット
-git commit -m "WIP: 作業中の機能"
-```
-
-#### 3. 開発の完了とマージ
-
-```bash
-# 最後にmainブランチの最新変更を取得
-git checkout main
-git pull origin main
-
-# featureブランチに戻る
-git checkout feature/新機能名
-
-# mainブランチの変更をfeatureブランチにマージ
-git merge main
-
-# コンフリクトがあれば解決後、再度コミット
-git add .
-git commit -m "merge: mainブランチの変更をマージ"
-
-# featureブランチをmainにマージ
-git checkout main
-git merge feature/新機能名
-
-# 不要になったfeatureブランチを削除
-git branch -d feature/新機能名
-
-# GitHubにプッシュ
-git push origin main
-```
-
-### ブランチ命名規則
-
-```bash
-# 新機能の追加
-feature/機能名
-例: feature/add-pet-evolution
-
-# バグ修正
-fix/修正内容
-例: fix/hunger-rate-calculation
-
-# ドキュメント更新
-docs/更新内容
-例: docs/update-readme
-
-# リファクタリング
-refactor/変更内容
-例: refactor/event-system
-
-# テスト追加
-test/テスト内容
-例: test/add-pet-state-tests
-```
-
-### コミットメッセージの書き方
-
-```bash
-# 新機能追加
-git commit -m "feat: 新しい機能を追加"
-
-# バグ修正
-git commit -m "fix: バグを修正"
-
-# ドキュメント更新
-git commit -m "docs: ドキュメントを更新"
-
-# コードスタイル修正
-git commit -m "style: コードスタイルを修正"
-
-# リファクタリング
-git commit -m "refactor: コードをリファクタリング"
-
-# テスト追加
-git commit -m "test: テストを追加"
-
-# 作業中（Work In Progress）
-git commit -m "WIP: 作業中の機能"
-```
-
-### 開発時のベストプラクティス
-
-#### 1. 小さなコミットを心がける
-```bash
-# 良い例：機能ごとに分けてコミット
-git add src/game/entities/pet_state.py
-git commit -m "feat: ペットの進化システムを追加"
-
-git add src/game/ui/components.py
-git commit -m "feat: 進化表示UIを追加"
-
-# 悪い例：大量の変更を一度にコミット
-git add .
-git commit -m "いろいろ追加"
-```
-
-#### 2. 開発前の準備
-```bash
-# 作業開始前
-git checkout main
-git pull origin main
-git checkout -b feature/新機能名
-
-# 作業終了時
-git push origin feature/新機能名  # リモートに保存
-```
-
-#### 3. コンフリクトの解決
-```bash
-# コンフリクトが発生した場合
-git status  # コンフリクトファイルを確認
-
-# ファイルを編集してコンフリクトを解決
-# <<<<<<< HEAD から ======= までの部分を編集
-
-# 解決後
-git add .
-git commit -m "resolve: コンフリクトを解決"
-```
-
-### 開発環境でのテスト
-
-```bash
-# 機能開発中は定期的にテスト
-python -m src.main
-
-# テストファイルがある場合
-python -m pytest tests/
-
-# Docker環境でのテスト
-docker-compose -f docker-compose.macwin.yml up --build
-```
-
