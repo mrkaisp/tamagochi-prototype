@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    container_name: tamagotchi-pygame
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - .:/workspaces/tamagotchi-prototype
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    working_dir: /workspaces/tamagotchi-prototype
+    stdin_open: true
+    tty: true
+    command: python -m src.main
