@@ -40,6 +40,8 @@ class GameEngine:
         self.event_manager.subscribe(EventType.SEED_SELECTED, self._on_seed_selected)
         self.event_manager.subscribe(EventType.FLOWER_GROWTH_CHANGED, self._on_flower_growth_changed)
         self.event_manager.subscribe(EventType.FLOWER_WITHERED, self._on_flower_withered)
+        self.event_manager.subscribe(EventType.FLOWER_COMPLETED, self._on_flower_completed)
+        self.event_manager.subscribe(EventType.GAME_RESET, self._on_game_reset)
     
     def initialize(self) -> bool:
         """ゲームエンジンを初期化"""
@@ -176,8 +178,50 @@ class GameEngine:
     def _on_flower_growth_changed(self, event) -> None:
         """花の成長段階が変化した時の処理"""
         print(f"花が成長しました: {self.flower.stats.growth_stage_display}")
+        
+        # 花が完成した場合の特別な処理
+        if self.flower.stats.is_fully_grown:
+            self.event_manager.emit_simple(EventType.FLOWER_COMPLETED)
     
     def _on_flower_withered(self, event) -> None:
         """花が枯れた時の処理"""
         print("花が枯れてしまいました。")
         # 必要に応じてゲーム終了やリセット処理を実装
+    
+    def _on_flower_completed(self, event) -> None:
+        """花が完成した時の処理"""
+        print("🌸 花が完成しました！Rキーでリセットできます。")
+    
+    def _on_game_reset(self, event) -> None:
+        """ゲームリセットの処理"""
+        print("ゲームをリセットします...")
+        self.reset_game()
+        # ログファイルをリセット
+        self._reset_log_file()
+        print("新しい花の育成を開始します！")
+    
+    def _reset_log_file(self) -> None:
+        """ログファイルをリセット"""
+        import logging
+        import os
+        
+        # 現在のログファイルを削除
+        log_file = "flower_game.log"
+        if os.path.exists(log_file):
+            os.remove(log_file)
+        
+        # ログハンドラーをリセット
+        logger = logging.getLogger()
+        for handler in logger.handlers[:]:
+            if isinstance(handler, logging.FileHandler):
+                handler.close()
+                logger.removeHandler(handler)
+        
+        # 新しいファイルハンドラーを追加
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        
+        print("ログファイルをリセットしました。")

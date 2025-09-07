@@ -49,7 +49,7 @@ class UIRenderer:
         self.growth_stage_text = Text(Rect(6, 95, 80, 10), "種", 8)
         
         # 種選択画面用
-        self.seed_selection_title = Text(Rect(20, 20, 88, 15), "種を選択してください", 10)
+        self.seed_selection_title = Text(Rect(20, 20, 88, 15), "種を選択してください", 16)
         self.seed_options = [
             Text(Rect(20, 40, 88, 10), "1:太陽 2:月", 8),
             Text(Rect(20, 55, 88, 10), "3:風 4:雨", 8),
@@ -167,7 +167,7 @@ class UIRenderer:
     def _update_controls_text(self, stats: FlowerStats) -> None:
         """操作説明を更新"""
         if stats.is_fully_grown:
-            self.controls_text.set_text("花が完成しました！")
+            self.controls_text.set_text("R:リセット")
         else:
             self.controls_text.set_text("1:水 2:光 3:雑草 4:害虫")
     

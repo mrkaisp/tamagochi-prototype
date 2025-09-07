@@ -64,6 +64,8 @@ class FlowerStats:
     
     def _check_growth(self) -> None:
         """成長段階の判定"""
+        old_stage = self.growth_stage
+        
         if self.growth_stage == GrowthStage.SEED and self.light_level >= self.light_required_for_sprout:
             self.growth_stage = GrowthStage.SPROUT
             self.light_level = 0  # 成長後にリセット
@@ -76,6 +78,26 @@ class FlowerStats:
         elif self.growth_stage == GrowthStage.BUD and self.light_level >= self.light_required_for_flower:
             self.growth_stage = GrowthStage.FLOWER
             self.light_level = 0
+        
+        # 成長段階が変更された場合、特に花が完成した場合の処理
+        if old_stage != self.growth_stage:
+            self._on_growth_changed(old_stage, self.growth_stage)
+    
+    def _on_growth_changed(self, old_stage: GrowthStage, new_stage: GrowthStage) -> None:
+        """成長段階が変更された時の処理"""
+        if new_stage == GrowthStage.FLOWER:
+            # 花が完成した場合の特別な処理
+            self._on_flower_completed()
+    
+    def _on_flower_completed(self) -> None:
+        """花が完成した時の処理"""
+        # 花完成のログを出力
+        print("🌸 おめでとうございます！花が完成しました！")
+        print("Rキーを押すと新しい花を育て始めることができます。")
+        
+        # 花完成イベントを発行（外部からイベントマネージャーに通知する必要がある）
+        # この処理はFlowerクラスから直接イベントを発行できないため、
+        # ゲームエンジン側で成長段階の変更を監視して処理する
     
     def water(self) -> None:
         """水を与える"""

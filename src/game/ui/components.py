@@ -166,7 +166,8 @@ class Text(UIComponent):
                  color: Tuple[int, int, int] = Colors.BLACK):
         super().__init__(rect)
         self.text = text
-        self.font_size = max(8, font_size)  # 最低8×8ピクセル
+        # フォントサイズは8か16のどちらかのみ
+        self.font_size = 8 if font_size <= 8 else 16
         self.color = color
         self._font_manager = get_font_manager()
         # 128×128画面に最適化されたデフォルトサイズ

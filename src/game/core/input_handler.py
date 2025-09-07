@@ -11,6 +11,7 @@ class InputAction(Enum):
     REMOVE_WEEDS = auto()
     REMOVE_PESTS = auto()
     SELECT_SEED = auto()
+    RESET = auto()
     PAUSE = auto()
     DEBUG = auto()
 
@@ -26,6 +27,7 @@ class InputHandler:
             pg.K_3: InputAction.REMOVE_WEEDS,
             pg.K_4: InputAction.REMOVE_PESTS,
             pg.K_s: InputAction.SELECT_SEED,
+            pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
         }
@@ -49,6 +51,7 @@ class InputHandler:
             InputAction.REMOVE_WEEDS: self._handle_remove_weeds,
             InputAction.REMOVE_PESTS: self._handle_remove_pests,
             InputAction.SELECT_SEED: self._handle_select_seed,
+            InputAction.RESET: self._handle_reset,
             InputAction.PAUSE: self._handle_pause,
             InputAction.DEBUG: self._handle_debug,
         }
@@ -126,6 +129,11 @@ class InputHandler:
         self.event_manager.emit_simple(EventType.SEED_SELECTED)
         return True
     
+    def _handle_reset(self) -> bool:
+        """ゲームをリセットする"""
+        self.event_manager.emit_simple(EventType.GAME_RESET)
+        return True
+    
     def _handle_pause(self) -> bool:
         """一時停止"""
         # 一時停止機能は未実装
@@ -149,6 +157,7 @@ class InputConfig:
             pg.K_3: InputAction.REMOVE_WEEDS,
             pg.K_4: InputAction.REMOVE_PESTS,
             pg.K_s: InputAction.SELECT_SEED,
+            pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
         }
@@ -168,6 +177,7 @@ class InputConfig:
             InputAction.REMOVE_WEEDS: "雑草を除去する",
             InputAction.REMOVE_PESTS: "害虫を駆除する",
             InputAction.SELECT_SEED: "種を選択する",
+            InputAction.RESET: "ゲームをリセット",
             InputAction.PAUSE: "一時停止",
             InputAction.DEBUG: "デバッグ",
         }

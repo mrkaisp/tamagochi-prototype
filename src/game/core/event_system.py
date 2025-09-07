@@ -12,6 +12,8 @@ class EventType(Enum):
     SEED_SELECTED = auto()
     FLOWER_GROWTH_CHANGED = auto()
     FLOWER_WITHERED = auto()
+    FLOWER_COMPLETED = auto()
+    GAME_RESET = auto()
     STATS_CHANGED = auto()
     GAME_SAVED = auto()
     GAME_LOADED = auto()
