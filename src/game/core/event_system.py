@@ -1,16 +1,17 @@
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable, Any, Optional
 from enum import Enum, auto
 from dataclasses import dataclass
 from ..utils.helpers import Observable
 
 class EventType(Enum):
     """イベントタイプの定義"""
-    PET_FED = auto()
-    PET_PLAYED = auto()
-    PET_CLEANED = auto()
-    PET_MEDICATED = auto()
-    PET_SICK = auto()
-    PET_RECOVERED = auto()
+    FLOWER_WATERED = auto()
+    FLOWER_LIGHT_GIVEN = auto()
+    FLOWER_WEEDS_REMOVED = auto()
+    FLOWER_PESTS_REMOVED = auto()
+    SEED_SELECTED = auto()
+    FLOWER_GROWTH_CHANGED = auto()
+    FLOWER_WITHERED = auto()
     STATS_CHANGED = auto()
     GAME_SAVED = auto()
     GAME_LOADED = auto()
@@ -19,8 +20,8 @@ class EventType(Enum):
 class Event:
     """イベントデータクラス"""
     type: EventType
-    data: Dict[str, Any] = None
-    
+    data: Optional[Dict[str, Any]] = None
+
     def __post_init__(self):
         if self.data is None:
             self.data = {}
@@ -91,8 +92,8 @@ class EventManager:
         self._observables[name] = observable
         return observable
     
-    def get_observable(self, name: str) -> Observable:
-        """監視可能なオブジェクトを取得"""
+    def get_observable(self, name: str) -> Optional[Observable]:
+        """オブザーバブルを取得"""
         return self._observables.get(name)
     
     def subscribe(self, event_type: EventType, callback: Callable[[Event], None]) -> None:

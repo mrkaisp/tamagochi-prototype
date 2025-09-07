@@ -1,6 +1,6 @@
 import pygame as pg
-from typing import Optional, Dict, Any
-from ..entities.tamagotchi import Tamagotchi
+from typing import Dict, Any  # Removed Optional
+from ..entities.flower import Flower
 from ..core.event_system import EventManager, EventType
 from ..core.input_handler import InputHandler
 from ..ui.display import DisplayManager
@@ -19,9 +19,10 @@ class GameEngine:
         self.render_manager = None  # 初期化時に作成
         
         # ゲーム状態
-        self.tamagotchi = Tamagotchi()
+        self.flower = Flower()
         self.running = False
         self.paused = False
+        self.seed_selection_mode = True  # 種選択モード
         
         # タイマー
         self.fps_timer = Timer(1.0 / config.display.fps, auto_reset=True)
@@ -32,12 +33,13 @@ class GameEngine:
     
     def _setup_event_handlers(self) -> None:
         """イベントハンドラーを設定"""
-        self.event_manager.subscribe(EventType.PET_FED, self._on_pet_fed)
-        self.event_manager.subscribe(EventType.PET_PLAYED, self._on_pet_played)
-        self.event_manager.subscribe(EventType.PET_CLEANED, self._on_pet_cleaned)
-        self.event_manager.subscribe(EventType.PET_MEDICATED, self._on_pet_medicated)
-        self.event_manager.subscribe(EventType.PET_SICK, self._on_pet_sick)
-        self.event_manager.subscribe(EventType.PET_RECOVERED, self._on_pet_recovered)
+        self.event_manager.subscribe(EventType.FLOWER_WATERED, self._on_flower_watered)
+        self.event_manager.subscribe(EventType.FLOWER_LIGHT_GIVEN, self._on_flower_light_given)
+        self.event_manager.subscribe(EventType.FLOWER_WEEDS_REMOVED, self._on_flower_weeds_removed)
+        self.event_manager.subscribe(EventType.FLOWER_PESTS_REMOVED, self._on_flower_pests_removed)
+        self.event_manager.subscribe(EventType.SEED_SELECTED, self._on_seed_selected)
+        self.event_manager.subscribe(EventType.FLOWER_GROWTH_CHANGED, self._on_flower_growth_changed)
+        self.event_manager.subscribe(EventType.FLOWER_WITHERED, self._on_flower_withered)
     
     def initialize(self) -> bool:
         """ゲームエンジンを初期化"""
@@ -46,10 +48,6 @@ class GameEngine:
             # フォントシステムを初期化
             pg.font.init()
             self.display_manager.initialize()
-            
-            # フォントマネージャーを初期化（pygame初期化後）
-            from ..ui.font_manager import get_font_manager
-            font_manager = get_font_manager()
             
             # RenderManagerを初期化（フォント初期化後）
             self.render_manager = RenderManager()
@@ -67,7 +65,7 @@ class GameEngine:
             dt = clock.tick(config.display.fps) / 1000.0
             
             # イベント処理
-            if not self.input_handler.handle_events():
+            if not self.input_handler.handle_events(self.seed_selection_mode):
                 self.running = False
                 break
             
@@ -80,33 +78,37 @@ class GameEngine:
     
     def update(self, dt: float) -> None:
         """ゲーム状態を更新"""
-        # たまごっちを更新
-        self.tamagotchi.update(dt)
+        # 種選択モードでない場合のみ花を更新
+        if not self.seed_selection_mode:
+            self.flower.update(dt)
         
         # レンダラーを更新
-        self.render_manager.update(dt)
+        if self.render_manager:
+            self.render_manager.update(dt)
         
         # 自動セーブ
-        if self.auto_save_timer.update(dt):
-            self.tamagotchi.save()
+        if self.auto_save_timer.update(dt) and not self.seed_selection_mode:
+            self.flower.save()
     
     def render(self) -> None:
         """ゲームをレンダリング"""
         # 論理サーフェスを取得
-        logical_surface = self.display_manager.get_logical_surface()
-        
-        # ゲーム状態を準備
-        game_state = {
-            'stats': self.tamagotchi.stats,
-            'needs_attention': self.tamagotchi.needs_attention,
-            'is_alive': self.tamagotchi.is_alive
-        }
-        
-        # レンダリング
-        self.render_manager.render(logical_surface, game_state)
-        
-        # ディスプレイに表示
-        self.display_manager.render()
+        if self.render_manager:
+            logical_surface = self.display_manager.get_logical_surface()
+            
+            # ゲーム状態を準備
+            game_state = {
+                'flower_stats': self.flower.stats,
+                'needs_attention': self.flower.needs_attention,
+                'is_alive': self.flower.is_alive,
+                'seed_selection_mode': self.seed_selection_mode
+            }
+            
+            # レンダリング
+            self.render_manager.render(logical_surface, game_state)
+            
+            # ディスプレイに表示
+            self.display_manager.render()
     
     def pause(self) -> None:
         """ゲームを一時停止"""
@@ -119,46 +121,63 @@ class GameEngine:
     def quit(self) -> None:
         """ゲームを終了"""
         self.running = False
-        self.tamagotchi.save()
+        if not self.seed_selection_mode:
+            self.flower.save()
         pg.quit()
     
     def reset_game(self) -> None:
         """ゲームをリセット"""
-        self.tamagotchi.reset()
+        self.flower.reset()
+        self.seed_selection_mode = True
     
     def get_game_state(self) -> Dict[str, Any]:
         """ゲーム状態を取得"""
         return {
-            'stats': self.tamagotchi.stats,
-            'needs_attention': self.tamagotchi.needs_attention,
-            'is_alive': self.tamagotchi.is_alive,
+            'flower_stats': self.flower.stats,
+            'needs_attention': self.flower.needs_attention,
+            'is_alive': self.flower.is_alive,
+            'seed_selection_mode': self.seed_selection_mode,
             'paused': self.paused,
             'running': self.running
         }
     
     # イベントハンドラー
-    def _on_pet_fed(self, event) -> None:
-        """ペットに餌を与えた時の処理"""
-        self.tamagotchi.feed()
+    def _on_flower_watered(self, event) -> None:
+        """花に水を与えた時の処理"""
+        if not self.seed_selection_mode:
+            self.flower.water()
     
-    def _on_pet_played(self, event) -> None:
-        """ペットと遊んだ時の処理"""
-        self.tamagotchi.play()
+    def _on_flower_light_given(self, event) -> None:
+        """花に光を与えた時の処理"""
+        if not self.seed_selection_mode:
+            self.flower.give_light()
     
-    def _on_pet_cleaned(self, event) -> None:
-        """ペットを掃除した時の処理"""
-        self.tamagotchi.clean()
+    def _on_flower_weeds_removed(self, event) -> None:
+        """花の雑草を除去した時の処理"""
+        if not self.seed_selection_mode:
+            self.flower.remove_weeds()
     
-    def _on_pet_medicated(self, event) -> None:
-        """ペットに薬を与えた時の処理"""
-        self.tamagotchi.medicate()
+    def _on_flower_pests_removed(self, event) -> None:
+        """花の害虫を駆除した時の処理"""
+        if not self.seed_selection_mode:
+            self.flower.remove_pests()
     
-    def _on_pet_sick(self, event) -> None:
-        """ペットが病気になった時の処理"""
-        # 必要に応じて追加の処理を実装
-        pass
+    def _on_seed_selected(self, event) -> None:
+        """種を選択した時の処理"""
+        if self.seed_selection_mode:
+            from ..entities.flower import SeedType
+            seed_type_name = event.data.get("seed_type", "太陽")
+            seed_type = SeedType(seed_type_name)
+            self.flower.select_seed(seed_type)
+            # 種選択モードを終了
+            self.seed_selection_mode = False
+            print(f"{seed_type_name}の種を選択しました。花の育成を開始します。")
     
-    def _on_pet_recovered(self, event) -> None:
-        """ペットが回復した時の処理"""
-        # 必要に応じて追加の処理を実装
-        pass
+    def _on_flower_growth_changed(self, event) -> None:
+        """花の成長段階が変化した時の処理"""
+        print(f"花が成長しました: {self.flower.stats.growth_stage_display}")
+    
+    def _on_flower_withered(self, event) -> None:
+        """花が枯れた時の処理"""
+        print("花が枯れてしまいました。")
+        # 必要に応じてゲーム終了やリセット処理を実装

@@ -20,6 +20,7 @@ class Colors:
     BROWN = (139, 69, 19)
     DARK_TEAL = (0, 128, 128)
     ORANGE = (255, 165, 0)
+    PINK = (255, 192, 203)
 
 @dataclass
 class Rect:
@@ -48,6 +49,10 @@ class UIComponent:
     def draw(self, surface: pg.Surface) -> None:
         """描画（サブクラスで実装）"""
         pass
+    
+    def render(self, surface: pg.Surface) -> None:
+        """レンダリング（drawのエイリアス）"""
+        self.draw(surface)
     
     def update(self, dt: float) -> None:
         """更新（サブクラスで実装）"""
@@ -95,6 +100,10 @@ class Icon(UIComponent):
         super().__init__(rect)
         self.icon_type = icon_type
     
+    def set_icon(self, icon_type: str) -> None:
+        """アイコンタイプを設定"""
+        self.icon_type = icon_type
+    
     def draw(self, surface: pg.Surface) -> None:
         """描画"""
         if not self.visible:
@@ -102,34 +111,53 @@ class Icon(UIComponent):
         
         center = self.rect.center
         
-        if self.icon_type == "hunger":
-            # お腹のアイコン（リンゴの形）
-            pg.draw.circle(surface, Colors.RED, center, 4)
-            pg.draw.circle(surface, Colors.BLACK, center, 4, 1)
-            # 葉っぱ
-            pg.draw.ellipse(surface, Colors.GREEN, (center[0]-2, center[1]-6, 4, 3))
-            # 茎
-            pg.draw.line(surface, Colors.BROWN, (center[0], center[1]-3), (center[0], center[1]-5), 1)
-        elif self.icon_type == "happy":
-            # 笑顔アイコン
-            pg.draw.circle(surface, Colors.YELLOW, center, 4)
-            pg.draw.circle(surface, Colors.BLACK, center, 4, 1)
-            # 目
-            pg.draw.circle(surface, Colors.BLACK, (center[0]-1, center[1]-1), 1)
-            pg.draw.circle(surface, Colors.BLACK, (center[0]+1, center[1]-1), 1)
-            # 笑顔の口
-            pg.draw.arc(surface, Colors.BLACK, (center[0]-2, center[1]-1, 4, 3), 0, 3.14, 1)
-        elif self.icon_type == "clean":
-            # シャワーアイコン
+        if self.icon_type == "water":
+            # 水のアイコン（水滴）
             pg.draw.circle(surface, Colors.BLUE, center, 4)
             pg.draw.circle(surface, Colors.BLACK, center, 4, 1)
-            # シャワーヘッド
-            pg.draw.rect(surface, Colors.BLUE, (center[0]-3, center[1]-2, 6, 2))
-            # 水滴
-            for i in range(3):
-                x = center[0] - 2 + i * 2
-                y = center[1] + 2
-                pg.draw.circle(surface, Colors.BLUE, (x, y), 1)
+            # 水滴の形
+            pg.draw.ellipse(surface, Colors.BLUE, (center[0]-2, center[1]-6, 4, 6))
+            # 水滴の先端
+            pg.draw.circle(surface, Colors.BLUE, (center[0], center[1]+2), 1)
+        elif self.icon_type == "light":
+            # 光のアイコン（太陽）
+            pg.draw.circle(surface, Colors.YELLOW, center, 4)
+            pg.draw.circle(surface, Colors.BLACK, center, 4, 1)
+            # 光線
+            for i in range(8):
+                angle = i * 3.14159 / 4
+                x1 = center[0] + int(6 * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y1 = center[1] + int(6 * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                x2 = center[0] + int(8 * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y2 = center[1] + int(8 * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                pg.draw.line(surface, Colors.YELLOW, (x1, y1), (x2, y2), 1)
+        elif self.icon_type == "seed":
+            # 種のアイコン
+            pg.draw.ellipse(surface, Colors.BROWN, (center[0]-3, center[1]-2, 6, 4))
+            pg.draw.ellipse(surface, Colors.BLACK, (center[0]-3, center[1]-2, 6, 4), 1)
+        elif self.icon_type == "sprout":
+            # 芽のアイコン
+            pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+3), (center[0], center[1]-3), 2)
+            pg.draw.ellipse(surface, Colors.GREEN, (center[0]-2, center[1]-4, 4, 3))
+        elif self.icon_type == "stem":
+            # 茎のアイコン
+            pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-5), 3)
+            pg.draw.ellipse(surface, Colors.GREEN, (center[0]-3, center[1]-6, 6, 4))
+        elif self.icon_type == "bud":
+            # 蕾のアイコン
+            pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-2), 3)
+            pg.draw.ellipse(surface, Colors.PINK, (center[0]-3, center[1]-4, 6, 5))
+        elif self.icon_type == "flower":
+            # 花のアイコン
+            pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-3), 3)
+            # 花びら
+            for i in range(5):
+                angle = i * 2 * 3.14159 / 5
+                x = center[0] + int(4 * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y = center[1] + int(4 * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                pg.draw.circle(surface, Colors.PINK, (x, y), 2)
+            # 中心
+            pg.draw.circle(surface, Colors.YELLOW, center, 2)
 
 class Text(UIComponent):
     """テキストコンポーネント（美咲フォント対応）"""
@@ -187,71 +215,6 @@ class Text(UIComponent):
         """テキストのサイズを取得"""
         return self._font_manager.get_text_size(self.text, self._optimal_size)
 
-class PetSprite(UIComponent):
-    """ペットスプライトコンポーネント"""
-    
-    def __init__(self, rect: Rect):
-        super().__init__(rect)
-        self.is_sick = False
-        self.happiness = 50.0
-    
-    def set_state(self, is_sick: bool, happiness: float) -> None:
-        """状態を設定"""
-        self.is_sick = is_sick
-        self.happiness = happiness
-    
-    def draw(self, surface: pg.Surface) -> None:
-        """描画"""
-        if not self.visible:
-            return
-        
-        center = self.rect.center
-        
-        # 体（円形）
-        body_color = Colors.RED if not self.is_sick else Colors.GRAY
-        pg.draw.circle(surface, body_color, center, 20)
-        pg.draw.circle(surface, Colors.BLACK, center, 20, 1)
-        
-        # 目
-        eye_color = Colors.BLACK if not self.is_sick else Colors.RED
-        # 左目
-        pg.draw.rect(surface, eye_color, (center[0] - 6, center[1] - 5, 3, 3))
-        # 右目
-        pg.draw.rect(surface, eye_color, (center[0] + 3, center[1] - 5, 3, 3))
-        
-        # 口
-        if self.is_sick:
-            # 病気の時は下向き
-            pg.draw.line(surface, Colors.BLACK, (center[0] - 4, center[1] + 6), (center[0] + 4, center[1] + 6), 2)
-        elif self.happiness > 70:
-            # 幸せな時は上向き
-            pg.draw.line(surface, Colors.BLACK, (center[0] - 4, center[1] + 4), (center[0] + 4, center[1] + 4), 2)
-        else:
-            # 通常時は直線
-            pg.draw.line(surface, Colors.BLACK, (center[0] - 4, center[1] + 5), (center[0] + 4, center[1] + 5), 2)
-
-class PoopIndicator(UIComponent):
-    """うんちインジケーターコンポーネント"""
-    
-    def __init__(self, rect: Rect):
-        super().__init__(rect)
-        self.poop_count = 0
-    
-    def set_poop_count(self, count: int) -> None:
-        """うんちの数を設定"""
-        self.poop_count = count
-    
-    def draw(self, surface: pg.Surface) -> None:
-        """描画"""
-        if not self.visible:
-            return
-        
-        for i in range(min(self.poop_count, 3)):
-            x = self.rect.x + i * 10
-            y = self.rect.y
-            # シンプルな茶色の四角形
-            pg.draw.rect(surface, Colors.BROWN, (x, y, 8, 8))
-            pg.draw.rect(surface, Colors.BLACK, (x, y, 8, 8), 1)
 
 class DigitalClock(UIComponent):
     """デジタル時計コンポーネント（3×5ピクセル）"""

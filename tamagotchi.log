@@ -564,3 +564,10 @@
 2025-09-07 02:57:09,397 - src.game.data.save_manager - INFO - Save successful: save/state.json
 2025-09-07 02:57:16,866 - src.game.data.save_manager - INFO - Save successful: save/state.json
 2025-09-07 02:57:16,880 - src.game.data.save_manager - INFO - Save successful: save/state.json
+2025-09-07 05:22:27,823 - src.game.data.save_manager - INFO - Load successful: save/state.json
+2025-09-07 05:22:28,921 - __main__ - INFO - Game engine initialized successfully
+2025-09-07 05:22:58,933 - src.game.data.save_manager - ERROR - Save failed: Object of type GrowthStage is not JSON serializable
+2025-09-07 05:22:58,938 - src.game.data.save_manager - INFO - Restored from backup
+2025-09-07 05:22:58,950 - src.game.data.save_manager - ERROR - Save failed: Object of type GrowthStage is not JSON serializable
+2025-09-07 05:22:58,956 - src.game.data.save_manager - INFO - Restored from backup
+2025-09-07 05:23:15,005 - __main__ - INFO - Game finished successfully
