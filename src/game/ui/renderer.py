@@ -1,10 +1,9 @@
 import pygame as pg
 from typing import List, Dict, Any
 from .components import (
-    UIComponent, ProgressBar, Icon, Text, PetSprite, PoopIndicator,
-    Colors, Rect, DigitalClock
+    UIComponent, ProgressBar, Icon, Text, Colors, Rect, DigitalClock
 )
-from ..entities.pet_state import PetStats
+from ..entities.flower import FlowerStats, SeedType, GrowthStage
 from .font_manager import get_font_manager
 from ..utils.helpers import format_time_digital
 
@@ -25,145 +24,168 @@ class UIRenderer:
     def _setup_components(self) -> None:
         """UIコンポーネントを設定"""
         # ステータスバー
-        self.hunger_icon = Icon(Rect(6, 6, 10, 10), "hunger")
-        self.hunger_bar = ProgressBar(Rect(18, 8, 45, 6), color=Colors.GREEN)
-        self.hunger_label = Text(Rect(65, 8, 25, 10), "おなか", 8)
+        self.water_icon = Icon(Rect(6, 6, 10, 10), "water")
+        self.water_bar = ProgressBar(Rect(18, 8, 45, 6), color=Colors.BLUE)
+        self.water_label = Text(Rect(65, 8, 25, 10), "水", 8)
         
-        self.happiness_icon = Icon(Rect(6, 16, 10, 10), "happy")
-        self.happiness_bar = ProgressBar(Rect(18, 18, 45, 6), color=Colors.YELLOW)
-        self.happiness_label = Text(Rect(65, 18, 25, 10), "きげん", 8)
+        self.light_icon = Icon(Rect(6, 16, 10, 10), "light")
+        self.light_bar = ProgressBar(Rect(18, 18, 45, 6), color=Colors.YELLOW)
+        self.light_label = Text(Rect(65, 18, 25, 10), "光", 8)
         
-        self.cleanliness_icon = Icon(Rect(6, 26, 10, 10), "clean")
-        self.cleanliness_bar = ProgressBar(Rect(18, 28, 45, 6), color=Colors.BLUE)
-        self.cleanliness_label = Text(Rect(65, 28, 25, 10), "きれい", 8)
+        # 花のスプライト
+        self.flower_sprite = Icon(Rect(44, 45, 40, 40), "flower")
         
-        # ペットスプライト
-        self.pet_sprite = PetSprite(Rect(44, 45, 40, 40))
-        
-        # うんちインジケーター
-        self.poop_indicator = PoopIndicator(Rect(90, 100, 30, 20))
+        # 雑草・害虫インジケーター
+        self.weed_indicator = Text(Rect(90, 100, 30, 10), "雑草:0", 8)
+        self.pest_indicator = Text(Rect(90, 110, 30, 10), "害虫:0", 8)
         
         # 操作説明
-        self.controls_text = Text(Rect(6, 110, 120, 15), "1:ごはん 2:あそび 3:そうじ", 8)
+        self.controls_text = Text(Rect(6, 110, 120, 15), "1:水 2:光 3:雑草 4:害虫", 8)
         
         # 年齢表示（デジタル時計風）
         self.age_clock = DigitalClock(Rect(103, 5, DIGITAL_CLOCK_WIDTH, DIGITAL_CLOCK_HEIGHT), Colors.BLACK)
         
-        # コンポーネントリストに追加
-        self.components = [
-            self.hunger_icon, self.hunger_bar, self.hunger_label,
-            self.happiness_icon, self.happiness_bar, self.happiness_label,
-            self.cleanliness_icon, self.cleanliness_bar, self.cleanliness_label,
-            self.pet_sprite, self.poop_indicator,
-            self.controls_text, self.age_clock
+        # 成長段階表示
+        self.growth_stage_text = Text(Rect(6, 95, 80, 10), "種", 8)
+        
+        # 種選択画面用
+        self.seed_selection_title = Text(Rect(20, 20, 88, 15), "種を選択してください", 16)
+        self.seed_options = [
+            Text(Rect(20, 40, 88, 10), "1:太陽 2:月", 8),
+            Text(Rect(20, 55, 88, 10), "3:風 4:雨", 8),
         ]
-    
-    def update_stats(self, stats: PetStats) -> None:
-        """統計情報を更新"""
-        self._update_bars(stats)
-        self._update_colors(stats)
-        self._update_pet_state(stats)
-        self._update_age(stats)
-    
-    def _update_bars(self, stats: PetStats) -> None:
-        """バーの値を更新"""
-        self.hunger_bar.set_value(stats.hunger)
-        self.happiness_bar.set_value(stats.happiness)
-        self.cleanliness_bar.set_value(stats.cleanliness)
-    
-    def _update_colors(self, stats: PetStats) -> None:
-        """バーの色を状態に応じて変更"""
-        self.hunger_bar.color = Colors.GREEN if stats.hunger > 50 else Colors.RED
-        self.happiness_bar.color = Colors.YELLOW if stats.happiness > 50 else Colors.RED
-        self.cleanliness_bar.color = Colors.BLUE if stats.cleanliness > 50 else Colors.RED
-    
-    def _update_pet_state(self, stats: PetStats) -> None:
-        """ペットの状態を更新"""
-        self.pet_sprite.set_state(stats.is_sick, stats.happiness)
-        self.poop_indicator.set_poop_count(stats.poop_count)
-    
-    def _update_age(self, stats: PetStats) -> None:
-        """年齢をデジタル時計形式で更新"""
-        digital_time = format_time_digital(stats.age_seconds)
-        self.age_clock.set_time(digital_time)
-    
-    def draw(self, surface: pg.Surface) -> None:
-        """すべてのコンポーネントを描画"""
-        self._draw_background(surface)
-        self._draw_components(surface)
-    
-    def _draw_background(self, surface: pg.Surface) -> None:
-        """背景を描画"""
-        surface.fill(Colors.WHITE)
-        display_rect = Rect(DISPLAY_MARGIN, DISPLAY_MARGIN, DISPLAY_WIDTH, DISPLAY_HEIGHT)
-        pg.draw.rect(surface, Colors.LIGHT_GRAY, display_rect.to_pygame)
-        pg.draw.rect(surface, Colors.BLACK, display_rect.to_pygame, 2)
-    
-    def _draw_components(self, surface: pg.Surface) -> None:
-        """各コンポーネントを描画"""
-        for component in self.components:
-            component.draw(surface)
-    
-    def update(self, dt: float) -> None:
-        """コンポーネントを更新"""
-        for component in self.components:
-            component.update(dt)
-    
-    def handle_event(self, event) -> bool:
-        """イベントを処理"""
-        for component in self.components:
-            if component.handle_event(event):
-                return True
-        return False
-
-
-class RenderManager:
-    """レンダリングマネージャークラス"""
-    
-    def __init__(self):
-        self.ui_renderer = UIRenderer()
-        self.debug_mode = False
+        
+        # コンポーネントリストに追加
+        self.components.extend([
+            self.water_icon, self.water_bar, self.water_label,
+            self.light_icon, self.light_bar, self.light_label,
+            self.flower_sprite, self.weed_indicator, self.pest_indicator,
+            self.controls_text, self.age_clock, self.growth_stage_text,
+            self.seed_selection_title
+        ])
+        self.components.extend(self.seed_options)
     
     def render(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ゲーム状態をレンダリング"""
-        if 'stats' in game_state:
-            self.ui_renderer.update_stats(game_state['stats'])
+        # 背景をクリア
+        surface.fill(Colors.WHITE)
         
-        self.ui_renderer.draw(surface)
-        
-        if self.debug_mode:
-            self._draw_debug_info(surface, game_state)
+        # 種選択モードかどうかで表示を切り替え
+        if game_state.get('seed_selection_mode', False):
+            self._render_seed_selection(surface)
+        else:
+            self._render_game_play(surface, game_state)
     
-    def _draw_debug_info(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
-        """デバッグ情報を描画"""
-        if 'stats' not in game_state:
+    def _render_seed_selection(self, surface: pg.Surface) -> None:
+        """種選択画面をレンダリング"""
+        # タイトル
+        self.seed_selection_title.render(surface)
+        
+        # 種の選択肢
+        for option in self.seed_options:
+            option.render(surface)
+        
+        # 説明テキスト
+        instruction_text = Text(Rect(20, 80, 88, 20), "キーを押して種を選択", 8)
+        instruction_text.render(surface)
+    
+    def _render_game_play(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
+        """ゲームプレイ画面をレンダリング"""
+        flower_stats = game_state.get('flower_stats')
+        if not flower_stats:
             return
-            
-        stats = game_state['stats']
-        debug_text = [
-            f"おなか: {stats.hunger:.1f}",
-            f"きげん: {stats.happiness:.1f}",
-            f"きれい: {stats.cleanliness:.1f}",
-            f"うんち: {stats.poop_count}",
-            f"びょうき: {stats.is_sick}",
-            f"とし: {stats.age_formatted}"
-        ]
         
-        font_manager = get_font_manager()
+        # ステータスバーを更新
+        self._update_status_bars(flower_stats)
         
-        for i, text in enumerate(debug_text):
-            debug_surface = font_manager.render_text(text, 8, Colors.RED)
-            if debug_surface:
-                surface.blit(debug_surface, (10, 10 + i * 12))
+        # 花のスプライトを更新
+        self._update_flower_sprite(flower_stats)
+        
+        # 雑草・害虫表示を更新
+        self._update_indicators(flower_stats)
+        
+        # 成長段階表示を更新
+        self._update_growth_stage(flower_stats)
+        
+        # 年齢表示を更新
+        self._update_age_display(flower_stats)
+        
+        # 操作説明を更新
+        self._update_controls_text(flower_stats)
+        
+        # すべてのコンポーネントをレンダリング
+        for component in self.components:
+            if component not in [self.seed_selection_title] + self.seed_options:
+                component.render(surface)
     
-    def toggle_debug_mode(self) -> None:
-        """デバッグモードを切り替え"""
-        self.debug_mode = not self.debug_mode
+    def _update_status_bars(self, stats: FlowerStats) -> None:
+        """ステータスバーを更新"""
+        # 水の量
+        water_percentage = stats.water_level / 100.0
+        self.water_bar.set_value(water_percentage)
+        
+        # 光の蓄積量
+        light_percentage = stats.light_level / 100.0
+        self.light_bar.set_value(light_percentage)
+    
+    def _update_flower_sprite(self, stats: FlowerStats) -> None:
+        """花のスプライトを更新"""
+        # 成長段階に応じてスプライトを変更
+        sprite_name = self._get_sprite_name(stats)
+        self.flower_sprite.set_icon(sprite_name)
+    
+    def _get_sprite_name(self, stats: FlowerStats) -> str:
+        """成長段階に応じたスプライト名を取得"""
+        if stats.growth_stage == GrowthStage.SEED:
+            return "seed"
+        elif stats.growth_stage == GrowthStage.SPROUT:
+            return "sprout"
+        elif stats.growth_stage == GrowthStage.STEM:
+            return "stem"
+        elif stats.growth_stage == GrowthStage.BUD:
+            return "bud"
+        elif stats.growth_stage == GrowthStage.FLOWER:
+            return "flower"
+        else:
+            return "seed"
+    
+    def _update_indicators(self, stats: FlowerStats) -> None:
+        """雑草・害虫インジケーターを更新"""
+        self.weed_indicator.set_text(f"雑草:{stats.weed_count}")
+        self.pest_indicator.set_text(f"害虫:{stats.pest_count}")
+    
+    def _update_growth_stage(self, stats: FlowerStats) -> None:
+        """成長段階表示を更新"""
+        stage_text = f"{stats.growth_stage_display} ({stats.seed_type.value})"
+        self.growth_stage_text.set_text(stage_text)
+    
+    def _update_age_display(self, stats: FlowerStats) -> None:
+        """年齢表示を更新"""
+        age_text = stats.age_digital
+        self.age_clock.set_time(age_text)
+    
+    def _update_controls_text(self, stats: FlowerStats) -> None:
+        """操作説明を更新"""
+        if stats.is_fully_grown:
+            self.controls_text.set_text("R:リセット")
+        else:
+            self.controls_text.set_text("1:水 2:光 3:雑草 4:害虫")
     
     def update(self, dt: float) -> None:
-        """レンダラーを更新"""
-        self.ui_renderer.update(dt)
+        """レンダラーの更新"""
+        # 必要に応じてアニメーションなどを更新
+        pass
+
+class RenderManager:
+    """レンダリング管理クラス"""
     
-    def handle_event(self, event) -> bool:
-        """イベントを処理"""
-        return self.ui_renderer.handle_event(event)
+    def __init__(self):
+        self.ui_renderer = UIRenderer()
+    
+    def render(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
+        """ゲーム状態をレンダリング"""
+        self.ui_renderer.render(surface, game_state)
+    
+    def update(self, dt: float) -> None:
+        """レンダラーの更新"""
+        self.ui_renderer.update(dt)

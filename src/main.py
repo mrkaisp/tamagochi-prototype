@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-たまごっちプロトタイプ - リファクタリング版
+花の育成ゲーム『ふらわっち』 - プロトタイプ版
 """
 
 import sys
@@ -14,7 +14,7 @@ def setup_logging():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('tamagotchi.log', encoding='utf-8')
+            logging.FileHandler('flower_game.log', encoding='utf-8')
         ]
     )
 

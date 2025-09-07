@@ -14,21 +14,20 @@ class DisplayConfig:
 @dataclass
 class GameConfig:
     """ゲームプレイ関連の設定"""
-    # ステータスの自然変化（1秒あたりの変化量）
-    hunger_rate: float = 2.0
-    happiness_decay: float = 1.0
-    cleanliness_decay: float = 0.5
+    # 水の自然減少（1秒あたりの変化量）
+    water_decay_rate: float = 0.5
     
     # アクション効果量
-    feed_amount: float = 35.0
-    play_amount: float = 25.0
-    clean_amount: float = 60.0
-    medicine_effect: float = 1.0
+    water_amount: float = 30.0
+    light_amount: float = 10.0
+    weed_removal_amount: int = 2
+    pest_removal_amount: int = 2
     
-    # しきい値
-    sick_hunger_threshold: float = 85.0
-    sick_cleanliness_threshold: float = 25.0
-    max_poop: int = 3
+    # 雑草・害虫の発生
+    weed_growth_chance: float = 0.001  # 1秒あたりの確率
+    pest_growth_chance: float = 0.0005  # 1秒あたりの確率
+    max_weeds: int = 5
+    max_pests: int = 3
 
 @dataclass
 class DataConfig:

@@ -6,10 +6,12 @@ from ..core.event_system import EventManager, EventType
 class InputAction(Enum):
     """入力アクションの定義"""
     QUIT = auto()
-    FEED = auto()
-    PLAY = auto()
-    CLEAN = auto()
-    MEDICATE = auto()
+    WATER = auto()
+    LIGHT = auto()
+    REMOVE_WEEDS = auto()
+    REMOVE_PESTS = auto()
+    SELECT_SEED = auto()
+    RESET = auto()
     PAUSE = auto()
     DEBUG = auto()
 
@@ -20,12 +22,22 @@ class InputHandler:
         self.event_manager = event_manager
         self.key_bindings: Dict[int, InputAction] = {
             pg.K_ESCAPE: InputAction.QUIT,
-            pg.K_1: InputAction.FEED,
-            pg.K_2: InputAction.PLAY,
-            pg.K_3: InputAction.CLEAN,
-            pg.K_4: InputAction.MEDICATE,
+            pg.K_1: InputAction.WATER,
+            pg.K_2: InputAction.LIGHT,
+            pg.K_3: InputAction.REMOVE_WEEDS,
+            pg.K_4: InputAction.REMOVE_PESTS,
+            pg.K_s: InputAction.SELECT_SEED,
+            pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
+        }
+        
+        # 種選択用のキーバインド
+        self.seed_selection_bindings: Dict[int, str] = {
+            pg.K_1: "太陽",
+            pg.K_2: "月", 
+            pg.K_3: "風",
+            pg.K_4: "雨",
         }
         self.action_handlers: Dict[InputAction, Callable] = {}
         self._setup_default_handlers()
@@ -34,10 +46,12 @@ class InputHandler:
         """デフォルトのアクションハンドラーを設定"""
         self.action_handlers = {
             InputAction.QUIT: self._handle_quit,
-            InputAction.FEED: self._handle_feed,
-            InputAction.PLAY: self._handle_play,
-            InputAction.CLEAN: self._handle_clean,
-            InputAction.MEDICATE: self._handle_medicate,
+            InputAction.WATER: self._handle_water,
+            InputAction.LIGHT: self._handle_light,
+            InputAction.REMOVE_WEEDS: self._handle_remove_weeds,
+            InputAction.REMOVE_PESTS: self._handle_remove_pests,
+            InputAction.SELECT_SEED: self._handle_select_seed,
+            InputAction.RESET: self._handle_reset,
             InputAction.PAUSE: self._handle_pause,
             InputAction.DEBUG: self._handle_debug,
         }
@@ -50,15 +64,19 @@ class InputHandler:
         """アクションハンドラーを設定"""
         self.action_handlers[action] = handler
     
-    def handle_events(self) -> bool:
+    def handle_events(self, seed_selection_mode: bool = False) -> bool:
         """イベントを処理し、ゲームを続行するかどうかを返す"""
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return False
             
             elif event.type == pg.KEYDOWN:
-                if not self._handle_keydown(event.key):
-                    return False
+                if seed_selection_mode:
+                    if not self._handle_seed_selection(event.key):
+                        return False
+                else:
+                    if not self._handle_keydown(event.key):
+                        return False
         
         return True
     
@@ -71,29 +89,49 @@ class InputHandler:
                 return handler()
         return True
     
+    def _handle_seed_selection(self, key: int) -> bool:
+        """種選択時のキー押下イベントを処理"""
+        if key == pg.K_ESCAPE:
+            return False
+        elif key in self.seed_selection_bindings:
+            seed_type = self.seed_selection_bindings[key]
+            self.event_manager.emit_simple(EventType.SEED_SELECTED, seed_type=seed_type)
+            return True
+        return True
+    
     def _handle_quit(self) -> bool:
         """終了処理"""
         self.event_manager.emit_simple(EventType.STATS_CHANGED, action="quit")
         return False
     
-    def _handle_feed(self) -> bool:
-        """餌を与える"""
-        self.event_manager.emit_simple(EventType.PET_FED)
+    def _handle_water(self) -> bool:
+        """水を与える"""
+        self.event_manager.emit_simple(EventType.FLOWER_WATERED)
         return True
     
-    def _handle_play(self) -> bool:
-        """遊ぶ"""
-        self.event_manager.emit_simple(EventType.PET_PLAYED)
+    def _handle_light(self) -> bool:
+        """光を与える"""
+        self.event_manager.emit_simple(EventType.FLOWER_LIGHT_GIVEN)
         return True
     
-    def _handle_clean(self) -> bool:
-        """掃除する"""
-        self.event_manager.emit_simple(EventType.PET_CLEANED)
+    def _handle_remove_weeds(self) -> bool:
+        """雑草を除去する"""
+        self.event_manager.emit_simple(EventType.FLOWER_WEEDS_REMOVED)
         return True
     
-    def _handle_medicate(self) -> bool:
-        """薬を与える"""
-        self.event_manager.emit_simple(EventType.PET_MEDICATED)
+    def _handle_remove_pests(self) -> bool:
+        """害虫を駆除する"""
+        self.event_manager.emit_simple(EventType.FLOWER_PESTS_REMOVED)
+        return True
+    
+    def _handle_select_seed(self) -> bool:
+        """種を選択する"""
+        self.event_manager.emit_simple(EventType.SEED_SELECTED)
+        return True
+    
+    def _handle_reset(self) -> bool:
+        """ゲームをリセットする"""
+        self.event_manager.emit_simple(EventType.GAME_RESET)
         return True
     
     def _handle_pause(self) -> bool:
@@ -114,10 +152,12 @@ class InputConfig:
         """デフォルトのキーバインドを取得"""
         return {
             pg.K_ESCAPE: InputAction.QUIT,
-            pg.K_1: InputAction.FEED,
-            pg.K_2: InputAction.PLAY,
-            pg.K_3: InputAction.CLEAN,
-            pg.K_4: InputAction.MEDICATE,
+            pg.K_1: InputAction.WATER,
+            pg.K_2: InputAction.LIGHT,
+            pg.K_3: InputAction.REMOVE_WEEDS,
+            pg.K_4: InputAction.REMOVE_PESTS,
+            pg.K_s: InputAction.SELECT_SEED,
+            pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
         }
@@ -132,10 +172,12 @@ class InputConfig:
         """アクションの説明を取得"""
         descriptions = {
             InputAction.QUIT: "終了",
-            InputAction.FEED: "餌を与える",
-            InputAction.PLAY: "遊ぶ",
-            InputAction.CLEAN: "掃除する",
-            InputAction.MEDICATE: "薬を与える",
+            InputAction.WATER: "水を与える",
+            InputAction.LIGHT: "光を与える",
+            InputAction.REMOVE_WEEDS: "雑草を除去する",
+            InputAction.REMOVE_PESTS: "害虫を駆除する",
+            InputAction.SELECT_SEED: "種を選択する",
+            InputAction.RESET: "ゲームをリセット",
             InputAction.PAUSE: "一時停止",
             InputAction.DEBUG: "デバッグ",
         }

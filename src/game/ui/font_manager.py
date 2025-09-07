@@ -42,7 +42,8 @@ class FontManager:
             
             # 128×128画面に最適化されたサイズを定義
             # 美咲フォントは8×8ドットで、最低文字サイズは8×8ピクセル
-            font_sizes = [8, 10, 12, 14, 16]
+            # フォントサイズは8か16のどちらかのみ
+            font_sizes = [8, 16]
             
             for size in font_sizes:
                 try:
@@ -78,8 +79,8 @@ class FontManager:
             "DejaVu Sans"
         ]
         
-        # 最低文字サイズを8×8ピクセルに変更
-        font_sizes = [8, 10, 12, 14, 16]
+        # フォントサイズは8か16のどちらかのみ
+        font_sizes = [8, 16]
         
         for size in font_sizes:
             for font_name in fallback_fonts:
@@ -108,11 +109,13 @@ class FontManager:
         if not self._fonts and pg.font.get_init():
             self._initialize_fonts()
         
-        # 最低サイズを8に制限
-        if size < 8:
+        # フォントサイズは8か16のどちらかのみ
+        if size <= 8:
             size = 8
+        else:
+            size = 16
         
-        # 最も近いサイズのフォントを返す
+        # 指定サイズのフォントを返す
         if size in self._fonts:
             return self._fonts[size]
         
