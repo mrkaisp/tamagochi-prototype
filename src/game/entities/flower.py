@@ -4,6 +4,7 @@ from enum import Enum
 from ..data.save_manager import SaveManager
 from ..utils.helpers import Observable, Timer
 from ..data.config import config
+from ..utils.random_manager import get_rng
 
 class SeedType(Enum):
     """種の種類"""
@@ -29,10 +30,15 @@ class FlowerStats:
     age_seconds: float = 0.0
     
     # 育成要素
-    water_level: float = 50.0      # 0-100 水の量
-    light_level: float = 0.0       # 0-100 光の蓄積量
+    water_level: float = 0.0       # 0-100 水の量（仕様: 初期0）
+    light_level: float = 50.0      # 0-100 光の蓄積量（仕様: 初期50）
     weed_count: int = 0            # 雑草の数
     pest_count: int = 0            # 害虫の数
+    environment_level: float = 0.0 # 0-100 環境
+    mental_level: float = 0.0      # 0-100 メンタル（言葉）
+    light_tendency_yin: bool = False  # 陰/陽傾向（False=陽, True=陰）
+    phase2_branch: str = "ふつう"
+    phase3_shape: str = "ふつう"
     
     # 成長に必要な光の蓄積量
     light_required_for_sprout: float = 20.0
@@ -46,36 +52,45 @@ class FlowerStats:
         
         # 水の自然減少
         self.water_level = max(0, self.water_level - config.game.water_decay_rate * dt)
+        # 環境の自然減少
+        self.environment_level = max(0, self.environment_level - config.game.environment_decay_rate * dt)
         
         # 雑草の自然発生（低確率）
         if config.game.weed_growth_chance > 0 and self.weed_count < config.game.max_weeds:
-            import random
-            if random.random() < config.game.weed_growth_chance * dt:
+            if get_rng().random() < config.game.weed_growth_chance * dt:
                 self.weed_count += 1
         
         # 害虫の自然発生（低確率）
         if config.game.pest_growth_chance > 0 and self.pest_count < config.game.max_pests:
-            import random
-            if random.random() < config.game.pest_growth_chance * dt:
+            if get_rng().random() < config.game.pest_growth_chance * dt:
                 self.pest_count += 1
         
         # 成長判定
         self._check_growth()
     
     def _check_growth(self) -> None:
-        """成長段階の判定"""
+        """成長段階と分岐の判定"""
         old_stage = self.growth_stage
-        
+        # フェーズ1（種→芽）：光49/50の境界で陰/陽傾向
         if self.growth_stage == GrowthStage.SEED and self.light_level >= self.light_required_for_sprout:
+            # 決定前の光蓄積で陰/陽傾向を決める（境界49/50）
+            self.light_tendency_yin = (self.light_level < 50)
             self.growth_stage = GrowthStage.SPROUT
             self.light_level = 0  # 成長後にリセット
         elif self.growth_stage == GrowthStage.SPROUT and self.light_level >= self.light_required_for_stem:
             self.growth_stage = GrowthStage.STEM
             self.light_level = 0
+            # フェーズ2（芽→茎）：総合スコア帯で分岐
+            self.phase2_branch = self._compute_phase2_branch()
         elif self.growth_stage == GrowthStage.STEM and self.light_level >= self.light_required_for_bud:
             self.growth_stage = GrowthStage.BUD
             self.light_level = 0
-        elif self.growth_stage == GrowthStage.BUD and self.light_level >= self.light_required_for_flower:
+            # フェーズ3（茎→蕾）：種×芽×茎と光傾向で形
+            self.phase3_shape = self._compute_phase3_shape()
+        elif self.growth_stage == GrowthStage.BUD and (
+            self.light_level >= self.light_required_for_flower or
+            self.age_seconds >= config.game.growth_age_threshold_flower
+        ):
             self.growth_stage = GrowthStage.FLOWER
             self.light_level = 0
         
@@ -102,6 +117,10 @@ class FlowerStats:
     def water(self) -> None:
         """水を与える"""
         self.water_level = min(100, self.water_level + config.game.water_amount)
+
+    def fertilize(self) -> None:
+        """肥料を与える（栄養加算）"""
+        self.water_level = min(100, self.water_level + config.game.fertilizer_amount)
     
     def give_light(self, amount: float) -> None:
         """光を与える"""
@@ -111,10 +130,16 @@ class FlowerStats:
     def remove_weeds(self) -> None:
         """雑草を除去する"""
         self.weed_count = max(0, self.weed_count - config.game.weed_removal_amount)
+        self.environment_level = min(100, self.environment_level + 10)
     
     def remove_pests(self) -> None:
         """害虫を駆除する"""
         self.pest_count = max(0, self.pest_count - config.game.pest_removal_amount)
+        self.environment_level = min(100, self.environment_level + 10)
+
+    def adjust_mental(self, delta: float) -> None:
+        """メンタル（言葉）を調整"""
+        self.mental_level = max(0, min(100, self.mental_level + delta))
     
     @property
     def age_formatted(self) -> str:
@@ -165,6 +190,54 @@ class FlowerStats:
         data['seed_type'] = self.seed_type.value
         data['growth_stage'] = self.growth_stage.value
         return data
+
+    def _compute_phase2_branch(self) -> str:
+        """フェーズ2分岐（70-100 まっすぐ / 40-69 しなる / 0-39 つる / その他 ふつう）"""
+        # 総合スコア: 栄養/光/環境/メンタル + 種バイアス
+        score = 0.0
+        score += min(100, self.water_level)
+        score += min(100, self.light_level)
+        score += min(100, self.environment_level)
+        score += min(100, self.mental_level)
+        score /= 4.0
+        # 種バイアス（例: 太陽は+5）
+        seed_bias = {
+            SeedType.SUN: 5,
+            SeedType.MOON: 0,
+            SeedType.WIND: 2,
+            SeedType.RAIN: 2,
+        }.get(self.seed_type, 0)
+        score += seed_bias
+        # メンタル高値バイアス
+        if self.mental_level >= 70:
+            score += 5
+        if score >= 70:
+            return "まっすぐ"
+        elif score >= 40:
+            return "しなる"
+        elif score >= 0:
+            return "つる"
+        return "ふつう"
+
+    def _compute_phase3_shape(self) -> str:
+        """フェーズ3形状（種×芽×茎と光傾向で決定）簡易版"""
+        base = 0
+        base += 10 if self.seed_type in (SeedType.SUN, SeedType.RAIN) else 5
+        base += 10 if self.phase2_branch == "まっすぐ" else (5 if self.phase2_branch == "しなる" else 0)
+        base += -5 if self.light_tendency_yin else 5
+        # 形候補
+        candidates = [
+            ("大輪", base >= 20),
+            ("まるまる", base >= 15),
+            ("ひらひら", base >= 10),
+            ("ちいさめ", base >= 5),
+            ("とがり", base < 5),
+        ]
+        valid = [name for name, ok in candidates if ok]
+        if not valid:
+            return "ふつう"
+        from ..utils.random_manager import get_rng
+        return get_rng().choice(valid)
     
     @classmethod
     def from_dict(cls, data: dict) -> 'FlowerStats':

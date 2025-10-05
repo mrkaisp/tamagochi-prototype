@@ -8,6 +8,7 @@ from ..ui.renderer import RenderManager
 from ..data.config import config
 from ..utils.helpers import Timer
 from .screen_state import ScreenState
+from ..utils.random_manager import get_rng
 
 class GameEngine:
     """ゲームエンジンクラス"""
@@ -33,6 +34,12 @@ class GameEngine:
         self.mode_return_timer = Timer(0.8, auto_reset=False)
         self.mode_active = False
         self.settings_reset_selected = False
+        # 行為制約
+        self._nutrition_actions_in_current_hour = 0
+        self._last_action_hour = 0
+        # 無効操作フィードバック
+        self._invalid_message = ""
+        self._invalid_message_timer = 0.0
         
         # イベントハンドラーの設定
         self._setup_event_handlers()
@@ -48,6 +55,11 @@ class GameEngine:
         self.event_manager.subscribe(EventType.FLOWER_WITHERED, self._on_flower_withered)
         self.event_manager.subscribe(EventType.FLOWER_COMPLETED, self._on_flower_completed)
         self.event_manager.subscribe(EventType.GAME_RESET, self._on_game_reset)
+        # 新規アクション
+        self.event_manager.subscribe(EventType.FERTILIZER_GIVEN, self._on_fertilizer)
+        self.event_manager.subscribe(EventType.MENTAL_LIKE, self._on_mental_like)
+        self.event_manager.subscribe(EventType.MENTAL_DISLIKE, self._on_mental_dislike)
+        self.event_manager.subscribe(EventType.INVALID_ACTION, self._on_invalid_action)
     
     def initialize(self) -> bool:
         """ゲームエンジンを初期化"""
@@ -56,6 +68,8 @@ class GameEngine:
             # フォントシステムを初期化
             pg.font.init()
             self.display_manager.initialize()
+            # RNG seed initialize (reproducibility)
+            get_rng().set_seed(config.data.random_seed)
             
             # RenderManagerを初期化（フォント初期化後）
             self.render_manager = RenderManager()
@@ -89,7 +103,18 @@ class GameEngine:
         """ゲーム状態を更新"""
         # メインプレイ中のみ花を更新
         if self.screen_state == ScreenState.MAIN and not self.paused:
+            # 成長段階の変化を検知するため、更新前の段階を保持
+            previous_stage = self.flower.stats.growth_stage
+            # 早送り/一時停止に応じた更新
             self.flower.update(dt)
+            # 成長段階の変更イベントを発行
+            if previous_stage != self.flower.stats.growth_stage:
+                self.event_manager.emit_simple(EventType.FLOWER_GROWTH_CHANGED,
+                                               old_stage=previous_stage.value,
+                                               new_stage=self.flower.stats.growth_stage.value)
+            # 枯死判定→自動遷移
+            if not self.flower.is_alive:
+                self.event_manager.emit_simple(EventType.FLOWER_WITHERED)
         
         # レンダラーを更新
         if self.render_manager:
@@ -103,6 +128,17 @@ class GameEngine:
         if self.mode_active and self.mode_return_timer.update(dt):
             self.screen_state = ScreenState.MAIN
             self.mode_active = False
+
+        # 行為制約: ゲーム内時間（時）を更新し、同一時内のカウンタ初期化
+        current_hour = int(self.flower.stats.age_seconds // 3600)
+        if current_hour != self._last_action_hour:
+            self._last_action_hour = current_hour
+            self._nutrition_actions_in_current_hour = 0
+        # 無効操作メッセージの寿命
+        if self._invalid_message_timer > 0.0:
+            self._invalid_message_timer = max(0.0, self._invalid_message_timer - dt)
+            if self._invalid_message_timer == 0.0:
+                self._invalid_message = ""
     
     def render(self) -> None:
         """ゲームをレンダリング"""
@@ -120,6 +156,7 @@ class GameEngine:
                 'paused': self.paused,
                 'time_scale': self.time_scale,
                 'settings_reset_selected': self.settings_reset_selected,
+                'invalid_message': self._invalid_message,
             }
             
             # レンダリング
@@ -163,14 +200,24 @@ class GameEngine:
     # イベントハンドラー
     def _on_flower_watered(self, event) -> None:
         """花に水を与えた時の処理"""
+        if not self._can_perform_nutrition_action():
+            self._emit_invalid("栄養行為は同一時間内で3回まで")
+            return
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_WATER):
             self.flower.water()
             self.screen_state = ScreenState.MODE_WATER
             self.mode_return_timer.reset()
             self.mode_active = True
+            self._nutrition_actions_in_current_hour += 1
     
     def _on_flower_light_given(self, event) -> None:
         """花に光を与えた時の処理"""
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_LIGHT):
             self.flower.give_light()
             self.screen_state = ScreenState.MODE_LIGHT
@@ -179,6 +226,9 @@ class GameEngine:
     
     def _on_flower_weeds_removed(self, event) -> None:
         """花の雑草を除去した時の処理"""
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
             self.flower.remove_weeds()
             self.screen_state = ScreenState.MODE_ENV
@@ -187,11 +237,45 @@ class GameEngine:
     
     def _on_flower_pests_removed(self, event) -> None:
         """花の害虫を駆除した時の処理"""
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
             self.flower.remove_pests()
             self.screen_state = ScreenState.MODE_ENV
             self.mode_return_timer.reset()
             self.mode_active = True
+
+    def _on_fertilizer(self, event) -> None:
+        if not self._can_perform_nutrition_action():
+            self._emit_invalid("栄養行為は同一時間内で3回まで")
+            return
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
+        if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_WATER):
+            self.flower.stats.fertilize()
+            self.screen_state = ScreenState.MODE_WATER
+            self.mode_return_timer.reset()
+            self.mode_active = True
+            self._nutrition_actions_in_current_hour += 1
+
+    def _on_mental_like(self, event) -> None:
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
+        self.flower.stats.adjust_mental(+5)
+
+    def _on_mental_dislike(self, event) -> None:
+        if self._is_sleep_time():
+            self._emit_invalid("睡眠中は操作できません")
+            return
+        self.flower.stats.adjust_mental(-5)
+
+    def _on_invalid_action(self, event) -> None:
+        msg = event.data.get('message', '') if event and event.data else ''
+        self._invalid_message = msg
+        self._invalid_message_timer = 2.0
     
     def _on_seed_selected(self, event) -> None:
         """種を選択した時の処理"""
@@ -304,12 +388,32 @@ class GameEngine:
                 self.settings_reset_selected = False
             else:
                 self.screen_state = ScreenState.TIME_SETTING
-        elif self.screen_state in (ScreenState.FLOWER_LANGUAGE, ScreenState.DEATH):
+        elif self.screen_state == ScreenState.FLOWER_LANGUAGE:
+            # 花言葉選択後はメインへ戻る
+            self.screen_state = ScreenState.MAIN
+        elif self.screen_state == ScreenState.DEATH:
             # 決定でタイトルへ
             self.reset_game()
         elif self.screen_state == ScreenState.STATUS:
             # ステータスから決定でメインへ
             self.screen_state = ScreenState.MAIN
+
+    def _is_sleep_time(self) -> bool:
+        # 仮のゲーム内時間（分解能: 時）
+        hour = int((self.flower.stats.age_seconds // 3600) % 24)
+        start = config.game.sleep_start_hour
+        end = config.game.sleep_end_hour
+        if start <= end:
+            return start <= hour < end
+        else:
+            return hour >= start or hour < end
+
+    def _can_perform_nutrition_action(self) -> bool:
+        # 1時間内：3回目以降は無効（= 2回まで有効）
+        return self._nutrition_actions_in_current_hour < 2
+
+    def _emit_invalid(self, message: str) -> None:
+        self.event_manager.emit_simple(EventType.INVALID_ACTION, message=message)
 
     def _on_nav_cancel(self, event) -> None:
         if self.screen_state in (ScreenState.SEED_SELECTION, ScreenState.TIME_SETTING, ScreenState.SETTINGS, ScreenState.STATUS):

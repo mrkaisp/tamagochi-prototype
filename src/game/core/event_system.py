@@ -24,6 +24,11 @@ class EventType(Enum):
     TIME_TOGGLE_PAUSE = auto()
     TIME_SPEED_NORMAL = auto()
     TIME_SPEED_FAST = auto()
+    # New actions and feedback
+    FERTILIZER_GIVEN = auto()
+    MENTAL_LIKE = auto()
+    MENTAL_DISLIKE = auto()
+    INVALID_ACTION = auto()
 
 @dataclass
 class Event:

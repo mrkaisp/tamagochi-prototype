@@ -28,12 +28,22 @@ class GameConfig:
     pest_growth_chance: float = 0.0005  # 1秒あたりの確率
     max_weeds: int = 5
     max_pests: int = 3
+    # メンタル/環境
+    environment_decay_rate: float = 0.2
+    mental_decay_rate: float = 0.0
+    fertilizer_amount: float = 20.0
+    # 睡眠帯（0-23 時）
+    sleep_start_hour: int = 22
+    sleep_end_hour: int = 6
+    # 成長/分岐用
+    growth_age_threshold_flower: float = 60.0
 
 @dataclass
 class DataConfig:
     """データ関連の設定"""
     save_path: str = "save/state.json"
     auto_save_interval: float = 30.0  # 30秒ごとに自動セーブ
+    random_seed: int | None = None
 
 @dataclass
 class Config:

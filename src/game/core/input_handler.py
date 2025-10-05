@@ -21,27 +21,44 @@ class InputAction(Enum):
     TIME_TOGGLE_PAUSE = auto()
     TIME_SPEED_NORMAL = auto()
     TIME_SPEED_FAST = auto()
+    FERTILIZER = auto()
+    LIKE = auto()
+    DISLIKE = auto()
 
 class InputHandler:
     """入力処理クラス"""
     
     def __init__(self, event_manager: EventManager):
         self.event_manager = event_manager
+        # 1/2/3 を 左/決定/右 に割り当て（PCボタン仕様）
+        NAV_LEFT_KEY = pg.K_1
+        NAV_CONFIRM_KEY = pg.K_2
+        NAV_RIGHT_KEY = pg.K_3
+
         self.key_bindings: Dict[int, InputAction] = {
             pg.K_ESCAPE: InputAction.QUIT,
-            pg.K_1: InputAction.WATER,
-            pg.K_2: InputAction.LIGHT,
-            pg.K_3: InputAction.REMOVE_WEEDS,
-            pg.K_4: InputAction.REMOVE_PESTS,
+            NAV_LEFT_KEY: InputAction.NAV_LEFT,
+            NAV_CONFIRM_KEY: InputAction.NAV_CONFIRM,
+            NAV_RIGHT_KEY: InputAction.NAV_RIGHT,
+            # 行動キー（明確に割当）
+            pg.K_q: InputAction.WATER,
+            pg.K_w: InputAction.LIGHT,
+            pg.K_e: InputAction.REMOVE_WEEDS,
+            pg.K_r: InputAction.REMOVE_PESTS,
+            pg.K_f: InputAction.FERTILIZER,
+            pg.K_a: InputAction.LIKE,
+            pg.K_d: InputAction.DISLIKE,
             pg.K_s: InputAction.SELECT_SEED,
-            pg.K_r: InputAction.RESET,
+            # 補助
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
+            # 矢印/Enter/Space でも操作可能
             pg.K_LEFT: InputAction.NAV_LEFT,
             pg.K_RIGHT: InputAction.NAV_RIGHT,
             pg.K_RETURN: InputAction.NAV_CONFIRM,
             pg.K_SPACE: InputAction.NAV_CONFIRM,
             pg.K_BACKSPACE: InputAction.NAV_CANCEL,
+            # 時間制御
             pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
             pg.K_0: InputAction.TIME_SPEED_NORMAL,
             pg.K_9: InputAction.TIME_SPEED_FAST,
@@ -76,6 +93,9 @@ class InputHandler:
             InputAction.TIME_TOGGLE_PAUSE: self._handle_time_toggle_pause,
             InputAction.TIME_SPEED_NORMAL: self._handle_time_speed_normal,
             InputAction.TIME_SPEED_FAST: self._handle_time_speed_fast,
+            InputAction.FERTILIZER: self._handle_fertilizer,
+            InputAction.LIKE: self._handle_like,
+            InputAction.DISLIKE: self._handle_dislike,
         }
     
     def set_key_binding(self, key: int, action: InputAction) -> None:
@@ -144,6 +164,21 @@ class InputHandler:
     def _handle_remove_pests(self) -> bool:
         """害虫を駆除する"""
         self.event_manager.emit_simple(EventType.FLOWER_PESTS_REMOVED)
+        return True
+
+    def _handle_fertilizer(self) -> bool:
+        """肥料を与える"""
+        self.event_manager.emit_simple(EventType.FERTILIZER_GIVEN)
+        return True
+
+    def _handle_like(self) -> bool:
+        """好きを入力"""
+        self.event_manager.emit_simple(EventType.MENTAL_LIKE)
+        return True
+
+    def _handle_dislike(self) -> bool:
+        """きらいを入力"""
+        self.event_manager.emit_simple(EventType.MENTAL_DISLIKE)
         return True
     
     def _handle_select_seed(self) -> bool:
