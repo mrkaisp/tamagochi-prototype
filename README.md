@@ -175,6 +175,7 @@ pg.draw.rect(surface, color, (200, 200, 50, 50))  # 範囲外
 ```
 
 ### プロジェクト構造
+```
 src/
 ├── main.py # エントリーポイント
 ├── game/
@@ -195,6 +196,7 @@ src/
 │ │ └── save_manager.py # セーブデータ管理
 │ └── utils/ # ユーティリティ
 │ └── helpers.py # ヘルパー関数
+```
 
 ### 画面遷移（`docs/01_UI定義書.md`）
 
