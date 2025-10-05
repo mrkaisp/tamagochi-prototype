@@ -14,6 +14,13 @@ class InputAction(Enum):
     RESET = auto()
     PAUSE = auto()
     DEBUG = auto()
+    NAV_LEFT = auto()
+    NAV_RIGHT = auto()
+    NAV_CONFIRM = auto()
+    NAV_CANCEL = auto()
+    TIME_TOGGLE_PAUSE = auto()
+    TIME_SPEED_NORMAL = auto()
+    TIME_SPEED_FAST = auto()
 
 class InputHandler:
     """入力処理クラス"""
@@ -30,6 +37,14 @@ class InputHandler:
             pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
+            pg.K_LEFT: InputAction.NAV_LEFT,
+            pg.K_RIGHT: InputAction.NAV_RIGHT,
+            pg.K_RETURN: InputAction.NAV_CONFIRM,
+            pg.K_SPACE: InputAction.NAV_CONFIRM,
+            pg.K_BACKSPACE: InputAction.NAV_CANCEL,
+            pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
+            pg.K_0: InputAction.TIME_SPEED_NORMAL,
+            pg.K_9: InputAction.TIME_SPEED_FAST,
         }
         
         # 種選択用のキーバインド
@@ -54,6 +69,13 @@ class InputHandler:
             InputAction.RESET: self._handle_reset,
             InputAction.PAUSE: self._handle_pause,
             InputAction.DEBUG: self._handle_debug,
+            InputAction.NAV_LEFT: self._handle_nav_left,
+            InputAction.NAV_RIGHT: self._handle_nav_right,
+            InputAction.NAV_CONFIRM: self._handle_nav_confirm,
+            InputAction.NAV_CANCEL: self._handle_nav_cancel,
+            InputAction.TIME_TOGGLE_PAUSE: self._handle_time_toggle_pause,
+            InputAction.TIME_SPEED_NORMAL: self._handle_time_speed_normal,
+            InputAction.TIME_SPEED_FAST: self._handle_time_speed_fast,
         }
     
     def set_key_binding(self, key: int, action: InputAction) -> None:
@@ -144,6 +166,38 @@ class InputHandler:
         # デバッグ機能は未実装
         return True
 
+    def _handle_nav_left(self) -> bool:
+        """ナビゲーション: 左"""
+        self.event_manager.emit_simple(EventType.NAV_LEFT)
+        return True
+
+    def _handle_nav_right(self) -> bool:
+        """ナビゲーション: 右"""
+        self.event_manager.emit_simple(EventType.NAV_RIGHT)
+        return True
+
+    def _handle_nav_confirm(self) -> bool:
+        """ナビゲーション: 決定"""
+        self.event_manager.emit_simple(EventType.NAV_CONFIRM)
+        return True
+
+    def _handle_nav_cancel(self) -> bool:
+        """ナビゲーション: キャンセル"""
+        self.event_manager.emit_simple(EventType.NAV_CANCEL)
+        return True
+
+    def _handle_time_toggle_pause(self) -> bool:
+        self.event_manager.emit_simple(EventType.TIME_TOGGLE_PAUSE)
+        return True
+
+    def _handle_time_speed_normal(self) -> bool:
+        self.event_manager.emit_simple(EventType.TIME_SPEED_NORMAL)
+        return True
+
+    def _handle_time_speed_fast(self) -> bool:
+        self.event_manager.emit_simple(EventType.TIME_SPEED_FAST)
+        return True
+
 class InputConfig:
     """入力設定クラス"""
     
@@ -160,6 +214,14 @@ class InputConfig:
             pg.K_r: InputAction.RESET,
             pg.K_p: InputAction.PAUSE,
             pg.K_F1: InputAction.DEBUG,
+            pg.K_LEFT: InputAction.NAV_LEFT,
+            pg.K_RIGHT: InputAction.NAV_RIGHT,
+            pg.K_RETURN: InputAction.NAV_CONFIRM,
+            pg.K_SPACE: InputAction.NAV_CONFIRM,
+            pg.K_BACKSPACE: InputAction.NAV_CANCEL,
+            pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
+            pg.K_0: InputAction.TIME_SPEED_NORMAL,
+            pg.K_9: InputAction.TIME_SPEED_FAST,
         }
     
     @staticmethod
@@ -180,5 +242,12 @@ class InputConfig:
             InputAction.RESET: "ゲームをリセット",
             InputAction.PAUSE: "一時停止",
             InputAction.DEBUG: "デバッグ",
+            InputAction.NAV_LEFT: "左",
+            InputAction.NAV_RIGHT: "右",
+            InputAction.NAV_CONFIRM: "決定",
+            InputAction.NAV_CANCEL: "キャンセル",
+            InputAction.TIME_TOGGLE_PAUSE: "時間: 一時停止切替",
+            InputAction.TIME_SPEED_NORMAL: "時間: 通常",
+            InputAction.TIME_SPEED_FAST: "時間: 早送り",
         }
         return descriptions.get(action, "不明")

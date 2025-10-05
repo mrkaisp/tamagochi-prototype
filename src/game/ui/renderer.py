@@ -70,9 +70,28 @@ class UIRenderer:
         # 背景をクリア
         surface.fill(Colors.WHITE)
         
-        # 種選択モードかどうかで表示を切り替え
-        if game_state.get('seed_selection_mode', False):
+        # 画面状態によって表示を切り替え
+        screen_state = game_state.get('screen_state', 'MAIN')
+        if screen_state == 'TITLE':
+            self._render_title(surface)
+        elif screen_state == 'SEED_SELECTION':
             self._render_seed_selection(surface)
+        elif screen_state == 'TIME_SETTING':
+            self._render_time_setting(surface)
+        elif screen_state == 'SETTINGS':
+            self._render_settings(surface)
+        elif screen_state == 'STATUS':
+            self._render_status(surface, game_state)
+        elif screen_state == 'MODE_WATER':
+            self._render_mode(surface, '水やり')
+        elif screen_state == 'MODE_LIGHT':
+            self._render_mode(surface, '光')
+        elif screen_state == 'MODE_ENV':
+            self._render_mode(surface, '環境整備')
+        elif screen_state == 'FLOWER_LANGUAGE':
+            self._render_flower_language(surface)
+        elif screen_state == 'DEATH':
+            self._render_death(surface)
         else:
             self._render_game_play(surface, game_state)
     
@@ -88,6 +107,53 @@ class UIRenderer:
         # 説明テキスト
         instruction_text = Text(Rect(20, 80, 88, 20), "キーを押して種を選択", 8)
         instruction_text.render(surface)
+
+    def _render_title(self, surface: pg.Surface) -> None:
+        title = Text(Rect(18, 30, 88, 20), "ふらわっち", 20)
+        prompt = Text(Rect(18, 60, 88, 10), "決定で開始", 10)
+        title.render(surface)
+        prompt.render(surface)
+
+    def _render_time_setting(self, surface: pg.Surface) -> None:
+        title = Text(Rect(14, 20, 100, 12), "時間設定", 12)
+        tip = Text(Rect(10, 40, 110, 10), "T:一時停止 9:早送り 0:通常", 8)
+        tip2 = Text(Rect(10, 55, 110, 10), "決定でメインへ", 8)
+        title.render(surface)
+        tip.render(surface)
+        tip2.render(surface)
+
+    def _render_settings(self, surface: pg.Surface) -> None:
+        title = Text(Rect(14, 20, 100, 12), "設定", 12)
+        opt1 = Text(Rect(10, 40, 110, 10), "決定: 時間設定", 8)
+        opt2 = Text(Rect(10, 55, 110, 10), "右でトグル: やりなおし", 8)
+        back = Text(Rect(10, 70, 110, 10), "左/キャンセル: 戻る", 8)
+        title.render(surface)
+        opt1.render(surface)
+        opt2.render(surface)
+        back.render(surface)
+
+    def _render_status(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
+        self._render_game_play(surface, game_state)
+        overlay = Text(Rect(40, 5, 80, 10), "ステータス", 10)
+        overlay.render(surface)
+
+    def _render_mode(self, surface: pg.Surface, label: str) -> None:
+        title = Text(Rect(14, 20, 100, 12), label, 12)
+        tip = Text(Rect(10, 40, 110, 10), "行動後に戻る", 8)
+        title.render(surface)
+        tip.render(surface)
+
+    def _render_flower_language(self, surface: pg.Surface) -> None:
+        title = Text(Rect(8, 20, 110, 12), "花言葉を選ぶ", 12)
+        tip = Text(Rect(8, 40, 110, 10), "決定で戻る", 8)
+        title.render(surface)
+        tip.render(surface)
+
+    def _render_death(self, surface: pg.Surface) -> None:
+        title = Text(Rect(18, 20, 100, 12), "枯れてしまった…", 12)
+        tip = Text(Rect(8, 40, 110, 10), "決定でタイトル", 8)
+        title.render(surface)
+        tip.render(surface)
     
     def _render_game_play(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ゲームプレイ画面をレンダリング"""
@@ -112,6 +178,12 @@ class UIRenderer:
         
         # 操作説明を更新
         self._update_controls_text(flower_stats)
+
+        # 右上に時間状態を表示
+        paused = game_state.get('paused', False)
+        scale = game_state.get('time_scale', 1.0)
+        time_text = Text(Rect(80, 5, 44, 10), ("PAUSE" if paused else f"x{int(scale)}"), 8)
+        time_text.render(surface)
         
         # すべてのコンポーネントをレンダリング
         for component in self.components:

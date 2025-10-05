@@ -17,6 +17,13 @@ class EventType(Enum):
     STATS_CHANGED = auto()
     GAME_SAVED = auto()
     GAME_LOADED = auto()
+    NAV_LEFT = auto()
+    NAV_RIGHT = auto()
+    NAV_CONFIRM = auto()
+    NAV_CANCEL = auto()
+    TIME_TOGGLE_PAUSE = auto()
+    TIME_SPEED_NORMAL = auto()
+    TIME_SPEED_FAST = auto()
 
 @dataclass
 class Event:
