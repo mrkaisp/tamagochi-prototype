@@ -1,82 +1,75 @@
 import unittest
-from src.game.entities.pet_state import PetStats
+from pathlib import Path
+import tempfile
+from src.game.entities.flower import Flower, FlowerStats, GrowthStage, SeedType
 from src.game.data.config import config
+from src.game.data.save_manager import SaveManager
 
-class TestPetStats(unittest.TestCase):
-    """PetStatsクラスのテスト"""
-    
+
+class TestFlowerStats(unittest.TestCase):
+    """Flower/FlowerStats の基本テスト"""
+
     def setUp(self):
-        """テスト前の準備"""
-        self.stats = PetStats()
+        self.tmpdir = tempfile.TemporaryDirectory()
+        save_path = Path(self.tmpdir.name) / "state.json"
+        self.flower = Flower(save_manager=SaveManager(save_path=str(save_path)))
+        self.stats = self.flower.stats
     
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
     def test_initial_values(self):
-        """初期値のテスト"""
-        self.assertEqual(self.stats.hunger, 20.0)
-        self.assertEqual(self.stats.happiness, 80.0)
-        self.assertEqual(self.stats.cleanliness, 80.0)
+        self.assertEqual(self.stats.seed_type, SeedType.SUN)
+        self.assertEqual(self.stats.growth_stage, GrowthStage.SEED)
         self.assertEqual(self.stats.age_seconds, 0.0)
-        self.assertEqual(self.stats.poop_count, 0)
-        self.assertFalse(self.stats.is_sick)
-    
-    def test_update(self):
-        """更新処理のテスト"""
-        # 1秒更新
-        self.stats.update(1.0)
-        
-        # 自然変化の確認
-        self.assertGreater(self.stats.hunger, 20.0)  # 空腹度が増加
-        self.assertLess(self.stats.happiness, 80.0)  # 幸福度が減少
-        self.assertLess(self.stats.cleanliness, 80.0)  # 清潔度が減少
-        self.assertEqual(self.stats.age_seconds, 1.0)  # 年齢が増加
-    
-    def test_feed(self):
-        """餌を与える処理のテスト"""
-        initial_hunger = self.stats.hunger
-        initial_poop = self.stats.poop_count
-        
-        self.stats.feed()
-        
-        self.assertLess(self.stats.hunger, initial_hunger)
-        self.assertGreater(self.stats.poop_count, initial_poop)
-    
-    def test_play(self):
-        """遊ぶ処理のテスト"""
-        initial_happiness = self.stats.happiness
-        
-        self.stats.play()
-        
-        self.assertGreater(self.stats.happiness, initial_happiness)
-    
-    def test_clean(self):
-        """掃除処理のテスト"""
-        self.stats.poop_count = 3
-        initial_cleanliness = self.stats.cleanliness
-        
-        self.stats.clean()
-        
-        self.assertEqual(self.stats.poop_count, 0)
-        self.assertGreater(self.stats.cleanliness, initial_cleanliness)
-    
-    def test_sick_condition(self):
-        """病気状態のテスト"""
-        # 空腹度を高くして病気状態にする
-        self.stats.hunger = 90.0
-        self.stats.update(0.0)  # 病気判定のみ実行
-        
-        self.assertTrue(self.stats.is_sick)
-    
-    def test_age_formatting(self):
-        """年齢フォーマットのテスト"""
-        # 1時間30分45秒
-        self.stats.age_seconds = 5445.0
-        
-        hours, minutes, seconds = self.stats.age
-        self.assertEqual(hours, 1)
-        self.assertEqual(minutes, 30)
-        self.assertEqual(seconds, 45)
-        
-        # フォーマットされた文字列
-        self.assertIn("1h30m", self.stats.age_formatted)
+        self.assertEqual(self.stats.water_level, 50.0)
+        self.assertEqual(self.stats.light_level, 0.0)
+        self.assertEqual(self.stats.weed_count, 0)
+        self.assertEqual(self.stats.pest_count, 0)
+
+    def test_update_and_decay(self):
+        initial_water = self.stats.water_level
+        self.flower.update(1.0)
+        self.assertLess(self.stats.water_level, initial_water)
+        self.assertGreater(self.stats.age_seconds, 0.0)
+
+    def test_actions_affect_stats(self):
+        # water
+        initial = self.stats.water_level
+        self.flower.water()
+        self.assertGreaterEqual(self.stats.water_level, initial)
+
+        # light
+        initial_light = self.stats.light_level
+        self.flower.give_light()
+        self.assertGreater(self.stats.light_level, initial_light)
+
+        # weeds/pests
+        self.stats.weed_count = 2
+        self.flower.remove_weeds()
+        self.assertLessEqual(self.stats.weed_count, 2)
+        self.stats.pest_count = 2
+        self.flower.remove_pests()
+        self.assertLessEqual(self.stats.pest_count, 2)
+
+    def test_growth_progression(self):
+        # accumulate light to progress stages
+        self.flower.give_light(amount=self.stats.light_required_for_sprout)
+        self.stats._check_growth()
+        self.assertEqual(self.stats.growth_stage, GrowthStage.SPROUT)
+
+        self.flower.give_light(amount=self.stats.light_required_for_stem)
+        self.stats._check_growth()
+        self.assertEqual(self.stats.growth_stage, GrowthStage.STEM)
+
+        self.flower.give_light(amount=self.stats.light_required_for_bud)
+        self.stats._check_growth()
+        self.assertEqual(self.stats.growth_stage, GrowthStage.BUD)
+
+        self.flower.give_light(amount=self.stats.light_required_for_flower)
+        self.stats._check_growth()
+        self.assertEqual(self.stats.growth_stage, GrowthStage.FLOWER)
+
 
 if __name__ == '__main__':
     unittest.main()

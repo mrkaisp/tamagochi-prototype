@@ -38,9 +38,12 @@ class UIRenderer:
         # 雑草・害虫インジケーター
         self.weed_indicator = Text(Rect(90, 100, 30, 10), "雑草:0", 8)
         self.pest_indicator = Text(Rect(90, 110, 30, 10), "害虫:0", 8)
+        self.env_indicator = Text(Rect(6, 28, 60, 10), "環境:0", 8)
+        self.mental_indicator = Text(Rect(70, 28, 50, 10), "言葉:0", 8)
         
         # 操作説明
-        self.controls_text = Text(Rect(6, 110, 120, 15), "1:水 2:光 3:雑草 4:害虫", 8)
+        # 1/2/3 は 左/決定/右 のナビに使用
+        self.controls_text = Text(Rect(6, 110, 120, 15), "1:左 2:決定 3:右", 8)
         
         # 年齢表示（デジタル時計風）
         self.age_clock = DigitalClock(Rect(103, 5, DIGITAL_CLOCK_WIDTH, DIGITAL_CLOCK_HEIGHT), Colors.BLACK)
@@ -60,6 +63,7 @@ class UIRenderer:
             self.water_icon, self.water_bar, self.water_label,
             self.light_icon, self.light_bar, self.light_label,
             self.flower_sprite, self.weed_indicator, self.pest_indicator,
+            self.env_indicator, self.mental_indicator,
             self.controls_text, self.age_clock, self.growth_stage_text,
             self.seed_selection_title
         ])
@@ -70,9 +74,28 @@ class UIRenderer:
         # 背景をクリア
         surface.fill(Colors.WHITE)
         
-        # 種選択モードかどうかで表示を切り替え
-        if game_state.get('seed_selection_mode', False):
+        # 画面状態によって表示を切り替え
+        screen_state = game_state.get('screen_state', 'MAIN')
+        if screen_state == 'TITLE':
+            self._render_title(surface)
+        elif screen_state == 'SEED_SELECTION':
             self._render_seed_selection(surface)
+        elif screen_state == 'TIME_SETTING':
+            self._render_time_setting(surface)
+        elif screen_state == 'SETTINGS':
+            self._render_settings(surface)
+        elif screen_state == 'STATUS':
+            self._render_status(surface, game_state)
+        elif screen_state == 'MODE_WATER':
+            self._render_mode(surface, '水やり')
+        elif screen_state == 'MODE_LIGHT':
+            self._render_mode(surface, '光')
+        elif screen_state == 'MODE_ENV':
+            self._render_mode(surface, '環境整備')
+        elif screen_state == 'FLOWER_LANGUAGE':
+            self._render_flower_language(surface)
+        elif screen_state == 'DEATH':
+            self._render_death(surface)
         else:
             self._render_game_play(surface, game_state)
     
@@ -88,6 +111,53 @@ class UIRenderer:
         # 説明テキスト
         instruction_text = Text(Rect(20, 80, 88, 20), "キーを押して種を選択", 8)
         instruction_text.render(surface)
+
+    def _render_title(self, surface: pg.Surface) -> None:
+        title = Text(Rect(18, 30, 88, 20), "ふらわっち", 20)
+        prompt = Text(Rect(18, 60, 88, 10), "決定で開始", 10)
+        title.render(surface)
+        prompt.render(surface)
+
+    def _render_time_setting(self, surface: pg.Surface) -> None:
+        title = Text(Rect(14, 20, 100, 12), "時間設定", 12)
+        tip = Text(Rect(10, 40, 110, 10), "T:一時停止 9:早送り 0:通常", 8)
+        tip2 = Text(Rect(10, 55, 110, 10), "決定でメインへ", 8)
+        title.render(surface)
+        tip.render(surface)
+        tip2.render(surface)
+
+    def _render_settings(self, surface: pg.Surface) -> None:
+        title = Text(Rect(14, 20, 100, 12), "設定", 12)
+        opt1 = Text(Rect(10, 40, 110, 10), "決定: 時間設定", 8)
+        opt2 = Text(Rect(10, 55, 110, 10), "右でトグル: やりなおし", 8)
+        back = Text(Rect(10, 70, 110, 10), "左/キャンセル: 戻る", 8)
+        title.render(surface)
+        opt1.render(surface)
+        opt2.render(surface)
+        back.render(surface)
+
+    def _render_status(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
+        self._render_game_play(surface, game_state)
+        overlay = Text(Rect(40, 5, 80, 10), "ステータス", 10)
+        overlay.render(surface)
+
+    def _render_mode(self, surface: pg.Surface, label: str) -> None:
+        title = Text(Rect(14, 20, 100, 12), label, 12)
+        tip = Text(Rect(10, 40, 110, 10), "行動後に戻る", 8)
+        title.render(surface)
+        tip.render(surface)
+
+    def _render_flower_language(self, surface: pg.Surface) -> None:
+        title = Text(Rect(8, 20, 110, 12), "花言葉を選ぶ", 12)
+        tip = Text(Rect(8, 40, 110, 10), "決定で戻る", 8)
+        title.render(surface)
+        tip.render(surface)
+
+    def _render_death(self, surface: pg.Surface) -> None:
+        title = Text(Rect(18, 20, 100, 12), "枯れてしまった…", 12)
+        tip = Text(Rect(8, 40, 110, 10), "決定でタイトル", 8)
+        title.render(surface)
+        tip.render(surface)
     
     def _render_game_play(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ゲームプレイ画面をレンダリング"""
@@ -103,6 +173,9 @@ class UIRenderer:
         
         # 雑草・害虫表示を更新
         self._update_indicators(flower_stats)
+
+        # 環境/言葉表示
+        self._update_env_mental(flower_stats)
         
         # 成長段階表示を更新
         self._update_growth_stage(flower_stats)
@@ -112,6 +185,18 @@ class UIRenderer:
         
         # 操作説明を更新
         self._update_controls_text(flower_stats)
+
+        # 右上に時間状態を表示
+        paused = game_state.get('paused', False)
+        scale = game_state.get('time_scale', 1.0)
+        time_text = Text(Rect(80, 5, 44, 10), ("PAUSE" if paused else f"x{int(scale)}"), 8)
+        time_text.render(surface)
+
+        # 無効操作メッセージ（短時間表示）
+        invalid = game_state.get('invalid_message', "")
+        if invalid:
+            msg = Text(Rect(10, 85, 108, 10), invalid, 8)
+            msg.render(surface)
         
         # すべてのコンポーネントをレンダリング
         for component in self.components:
@@ -153,6 +238,10 @@ class UIRenderer:
         """雑草・害虫インジケーターを更新"""
         self.weed_indicator.set_text(f"雑草:{stats.weed_count}")
         self.pest_indicator.set_text(f"害虫:{stats.pest_count}")
+
+    def _update_env_mental(self, stats: FlowerStats) -> None:
+        self.env_indicator.set_text(f"環境:{int(stats.environment_level)}")
+        self.mental_indicator.set_text(f"言葉:{int(stats.mental_level)}")
     
     def _update_growth_stage(self, stats: FlowerStats) -> None:
         """成長段階表示を更新"""
@@ -167,9 +256,9 @@ class UIRenderer:
     def _update_controls_text(self, stats: FlowerStats) -> None:
         """操作説明を更新"""
         if stats.is_fully_grown:
-            self.controls_text.set_text("R:リセット")
+            self.controls_text.set_text("2:決定で花言葉/戻る")
         else:
-            self.controls_text.set_text("1:水 2:光 3:雑草 4:害虫")
+            self.controls_text.set_text("1:左 2:決定 3:右")
     
     def update(self, dt: float) -> None:
         """レンダラーの更新"""
