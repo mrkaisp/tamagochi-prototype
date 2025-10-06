@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 @dataclass
 class DisplayConfig:
@@ -43,7 +43,7 @@ class DataConfig:
     """データ関連の設定"""
     save_path: str = "save/state.json"
     auto_save_interval: float = 30.0  # 30秒ごとに自動セーブ
-    random_seed: int | None = None
+    random_seed: Optional[int] = None
 
 @dataclass
 class Config:
