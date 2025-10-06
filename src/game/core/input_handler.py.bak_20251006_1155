@@ -2,17 +2,9 @@ import pygame as pg
 from typing import Dict, Callable, Optional
 from enum import Enum, auto
 from ..core.event_system import EventManager, EventType
-from ..core.button_config import (
-    PRIMARY_BUTTONS,
-    ALT_LEFT_KEYS,
-    ALT_CONFIRM_KEYS,
-    ALT_RIGHT_KEYS,
-)
-
 
 class InputAction(Enum):
     """入力アクションの定義"""
-
     QUIT = auto()
     WATER = auto()
     LIGHT = auto()
@@ -33,42 +25,55 @@ class InputAction(Enum):
     LIKE = auto()
     DISLIKE = auto()
 
-
 class InputHandler:
     """入力処理クラス"""
-
+    
     def __init__(self, event_manager: EventManager):
         self.event_manager = event_manager
+        # 1/2/3 を 左/決定/右 に割り当て（PCボタン仕様）
+        NAV_LEFT_KEY = pg.K_1
+        NAV_CONFIRM_KEY = pg.K_2
+        NAV_RIGHT_KEY = pg.K_3
+
         self.key_bindings: Dict[int, InputAction] = {
             pg.K_ESCAPE: InputAction.QUIT,
-            PRIMARY_BUTTONS.left: InputAction.NAV_LEFT,
-            PRIMARY_BUTTONS.confirm: InputAction.NAV_CONFIRM,
-            PRIMARY_BUTTONS.right: InputAction.NAV_RIGHT,
+            NAV_LEFT_KEY: InputAction.NAV_LEFT,
+            NAV_CONFIRM_KEY: InputAction.NAV_CONFIRM,
+            NAV_RIGHT_KEY: InputAction.NAV_RIGHT,
+            # 行動キー（明確に割当）
+            pg.K_q: InputAction.WATER,
+            pg.K_w: InputAction.LIGHT,
+            pg.K_e: InputAction.REMOVE_WEEDS,
+            pg.K_r: InputAction.REMOVE_PESTS,
+            pg.K_f: InputAction.FERTILIZER,
+            pg.K_a: InputAction.LIKE,
+            pg.K_d: InputAction.DISLIKE,
+            pg.K_s: InputAction.SELECT_SEED,
+            # 補助
+            pg.K_p: InputAction.PAUSE,
+            pg.K_F1: InputAction.DEBUG,
+            # 矢印/Enter/Space でも操作可能
+            pg.K_LEFT: InputAction.NAV_LEFT,
+            pg.K_RIGHT: InputAction.NAV_RIGHT,
+            pg.K_RETURN: InputAction.NAV_CONFIRM,
+            pg.K_SPACE: InputAction.NAV_CONFIRM,
+            pg.K_BACKSPACE: InputAction.NAV_CANCEL,
+            # 時間制御
+            pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
+            pg.K_0: InputAction.TIME_SPEED_NORMAL,
+            pg.K_9: InputAction.TIME_SPEED_FAST,
         }
-        self._register_alternative_navigation_keys()
-
-        # 新仕様: 1/2/3キーのみ使用（カーソル選択方式）
-        # 以下の直接アクションキーは削除（すべてカーソル経由で実行）
-        # 必要に応じてデバッグ用にコメントアウトを外す
-        self._action_key_bindings: Dict[int, InputAction] = {
-            # pg.K_q: InputAction.WATER,
-            # pg.K_w: InputAction.LIGHT,
-            # pg.K_e: InputAction.REMOVE_WEEDS,
-            # pg.K_r: InputAction.REMOVE_PESTS,
-            # pg.K_f: InputAction.FERTILIZER,
-            # pg.K_a: InputAction.LIKE,
-            # pg.K_d: InputAction.DISLIKE,
-            # pg.K_s: InputAction.SELECT_SEED,
-            # pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
-            # pg.K_0: InputAction.TIME_SPEED_NORMAL,
-            # pg.K_9: InputAction.TIME_SPEED_FAST,
-            # pg.K_p: InputAction.PAUSE,
-            pg.K_F1: InputAction.DEBUG,  # デバッグのみ残す
+        
+        # 種選択用のキーバインド
+        self.seed_selection_bindings: Dict[int, str] = {
+            pg.K_1: "太陽",
+            pg.K_2: "月", 
+            pg.K_3: "風",
+            pg.K_4: "雨",
         }
-        self.key_bindings.update(self._action_key_bindings)
         self.action_handlers: Dict[InputAction, Callable] = {}
         self._setup_default_handlers()
-
+    
     def _setup_default_handlers(self):
         """デフォルトのアクションハンドラーを設定"""
         self.action_handlers = {
@@ -92,21 +97,21 @@ class InputHandler:
             InputAction.LIKE: self._handle_like,
             InputAction.DISLIKE: self._handle_dislike,
         }
-
+    
     def set_key_binding(self, key: int, action: InputAction) -> None:
         """キーバインドを設定"""
         self.key_bindings[key] = action
-
+    
     def set_action_handler(self, action: InputAction, handler: Callable) -> None:
         """アクションハンドラーを設定"""
         self.action_handlers[action] = handler
-
+    
     def handle_events(self, seed_selection_mode: bool = False) -> bool:
         """イベントを処理し、ゲームを続行するかどうかを返す"""
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return False
-
+            
             elif event.type == pg.KEYDOWN:
                 if seed_selection_mode:
                     if not self._handle_seed_selection(event.key):
@@ -114,9 +119,9 @@ class InputHandler:
                 else:
                     if not self._handle_keydown(event.key):
                         return False
-
+        
         return True
-
+    
     def _handle_keydown(self, key: int) -> bool:
         """キー押下イベントを処理"""
         if key in self.key_bindings:
@@ -125,7 +130,7 @@ class InputHandler:
                 handler = self.action_handlers[action]
                 return handler()
         return True
-
+    
     def _handle_seed_selection(self, key: int) -> bool:
         """種選択時のキー押下イベントを処理"""
         if key == pg.K_ESCAPE:
@@ -135,27 +140,27 @@ class InputHandler:
             self.event_manager.emit_simple(EventType.SEED_SELECTED, seed_type=seed_type)
             return True
         return True
-
+    
     def _handle_quit(self) -> bool:
         """終了処理"""
         self.event_manager.emit_simple(EventType.STATS_CHANGED, action="quit")
         return False
-
+    
     def _handle_water(self) -> bool:
         """水を与える"""
         self.event_manager.emit_simple(EventType.FLOWER_WATERED)
         return True
-
+    
     def _handle_light(self) -> bool:
         """光を与える"""
         self.event_manager.emit_simple(EventType.FLOWER_LIGHT_GIVEN)
         return True
-
+    
     def _handle_remove_weeds(self) -> bool:
         """雑草を除去する"""
         self.event_manager.emit_simple(EventType.FLOWER_WEEDS_REMOVED)
         return True
-
+    
     def _handle_remove_pests(self) -> bool:
         """害虫を駆除する"""
         self.event_manager.emit_simple(EventType.FLOWER_PESTS_REMOVED)
@@ -175,22 +180,22 @@ class InputHandler:
         """きらいを入力"""
         self.event_manager.emit_simple(EventType.MENTAL_DISLIKE)
         return True
-
+    
     def _handle_select_seed(self) -> bool:
         """種を選択する"""
         self.event_manager.emit_simple(EventType.SEED_SELECTED)
         return True
-
+    
     def _handle_reset(self) -> bool:
         """ゲームをリセットする"""
         self.event_manager.emit_simple(EventType.GAME_RESET)
         return True
-
+    
     def _handle_pause(self) -> bool:
         """一時停止"""
         # 一時停止機能は未実装
         return True
-
+    
     def _handle_debug(self) -> bool:
         """デバッグ機能"""
         # デバッグ機能は未実装
@@ -228,18 +233,9 @@ class InputHandler:
         self.event_manager.emit_simple(EventType.TIME_SPEED_FAST)
         return True
 
-    def _register_alternative_navigation_keys(self) -> None:
-        for key in ALT_LEFT_KEYS:
-            self.key_bindings[key] = InputAction.NAV_LEFT
-        for key in ALT_CONFIRM_KEYS:
-            self.key_bindings[key] = InputAction.NAV_CONFIRM
-        for key in ALT_RIGHT_KEYS:
-            self.key_bindings[key] = InputAction.NAV_RIGHT
-
-
 class InputConfig:
     """入力設定クラス"""
-
+    
     @staticmethod
     def get_default_bindings() -> Dict[int, InputAction]:
         """デフォルトのキーバインドを取得"""
@@ -257,17 +253,17 @@ class InputConfig:
             pg.K_RIGHT: InputAction.NAV_RIGHT,
             pg.K_RETURN: InputAction.NAV_CONFIRM,
             pg.K_SPACE: InputAction.NAV_CONFIRM,
-            # pg.K_BACKSPACE は仕様外のため削除
+            pg.K_BACKSPACE: InputAction.NAV_CANCEL,
             pg.K_t: InputAction.TIME_TOGGLE_PAUSE,
             pg.K_0: InputAction.TIME_SPEED_NORMAL,
             pg.K_9: InputAction.TIME_SPEED_FAST,
         }
-
+    
     @staticmethod
     def get_key_name(key: int) -> str:
         """キー名を取得"""
         return pg.key.name(key).upper()
-
+    
     @staticmethod
     def get_action_description(action: InputAction) -> str:
         """アクションの説明を取得"""

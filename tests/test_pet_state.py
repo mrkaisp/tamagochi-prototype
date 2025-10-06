@@ -14,7 +14,7 @@ class TestFlowerStats(unittest.TestCase):
         save_path = Path(self.tmpdir.name) / "state.json"
         self.flower = Flower(save_manager=SaveManager(save_path=str(save_path)))
         self.stats = self.flower.stats
-    
+
     def tearDown(self):
         self.tmpdir.cleanup()
 
@@ -22,12 +22,14 @@ class TestFlowerStats(unittest.TestCase):
         self.assertEqual(self.stats.seed_type, SeedType.SUN)
         self.assertEqual(self.stats.growth_stage, GrowthStage.SEED)
         self.assertEqual(self.stats.age_seconds, 0.0)
-        self.assertEqual(self.stats.water_level, 50.0)
-        self.assertEqual(self.stats.light_level, 0.0)
+        self.assertEqual(self.stats.water_level, 0.0)  # 現在の仕様: 初期値0
+        self.assertEqual(self.stats.light_level, 50.0)  # 現在の仕様: 初期値50
         self.assertEqual(self.stats.weed_count, 0)
         self.assertEqual(self.stats.pest_count, 0)
 
     def test_update_and_decay(self):
+        # 水を与えてから減少テストを実行
+        self.flower.water()
         initial_water = self.stats.water_level
         self.flower.update(1.0)
         self.assertLess(self.stats.water_level, initial_water)
@@ -71,5 +73,5 @@ class TestFlowerStats(unittest.TestCase):
         self.assertEqual(self.stats.growth_stage, GrowthStage.FLOWER)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

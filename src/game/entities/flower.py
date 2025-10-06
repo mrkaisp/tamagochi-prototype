@@ -37,7 +37,7 @@ class FlowerStats:
 
     # 育成要素
     water_level: float = 50.0  # 0-100 水の量（初期値を50に変更）
-    light_level: float = 50.0  # 0-100 光の蓄積量（仕様: 初期50）
+    light_level: float = 0.0  # 0-100 光の蓄積量（初期値は0、手動で光を与える）
     weed_count: int = 0  # 雑草の数
     pest_count: int = 0  # 害虫の数
     environment_level: float = 0.0  # 0-100 環境
@@ -286,7 +286,7 @@ class FlowerStats:
                 "growth_stage": GrowthStage.SEED,  # デフォルト値
                 "age_seconds": data.get("age_seconds", 0.0),
                 "water_level": 50.0,  # 古いhungerを水レベルに変換
-                "light_level": 50.0,  # デフォルト値
+                "light_level": 0.0,  # デフォルト値（光は手動で与える）
                 "weed_count": 0,
                 "pest_count": 0,
                 "environment_level": 0.0,
@@ -397,7 +397,7 @@ class Flower:
     @property
     def is_alive(self) -> bool:
         """生きているかどうか（水分が極端に低くなったら枯れる）"""
-        return self.stats.water_level > 10.0
+        return self.stats.water_level > 5.0
 
     @property
     def needs_attention(self) -> bool:
