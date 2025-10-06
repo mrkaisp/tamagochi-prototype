@@ -79,7 +79,9 @@ class EventBus:
                 try:
                     callback(event)
                 except Exception as e:
-                    print(f"Event callback error: {e}")
+                    print(f"Event callback error in {event.type}: {e}")
+                    import traceback
+                    traceback.print_exc()
         
         # グローバルリスナーに通知
         for callback in self._global_listeners:
@@ -87,6 +89,8 @@ class EventBus:
                 callback(event)
             except Exception as e:
                 print(f"Global event callback error: {e}")
+                import traceback
+                traceback.print_exc()
     
     def emit_simple(self, event_type: EventType, **kwargs) -> None:
         """シンプルなイベント発行"""

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 @dataclass
 class DisplayConfig:
@@ -15,11 +15,11 @@ class DisplayConfig:
 class GameConfig:
     """ゲームプレイ関連の設定"""
     # 水の自然減少（1秒あたりの変化量）
-    water_decay_rate: float = 0.5
+    water_decay_rate: float = 0.2  # 0.5 → 0.2 に緩和（約2.5倍長持ち）
     
     # アクション効果量
-    water_amount: float = 30.0
-    light_amount: float = 10.0
+    water_amount: float = 20.0  # 1回の水やりで20%増加（5回で100%）
+    light_amount: float = 15.0  # 1回の光で15%増加（約7回で100%）
     weed_removal_amount: int = 2
     pest_removal_amount: int = 2
     
@@ -43,7 +43,7 @@ class DataConfig:
     """データ関連の設定"""
     save_path: str = "save/state.json"
     auto_save_interval: float = 30.0  # 30秒ごとに自動セーブ
-    random_seed: int | None = None
+    random_seed: Optional[int] = None
 
 @dataclass
 class Config:
