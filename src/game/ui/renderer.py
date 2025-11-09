@@ -317,10 +317,12 @@ class UIRenderer:
                 component.render(surface)
 
     def _update_flower_sprite(self, stats: FlowerStats) -> None:
-        """花のスプライトを更新"""
-        # 成長段階に応じてスプライトを変更
+        """花のスプライトを更新（擬人化キャラクター）"""
+        # 成長段階に応じてスプライト名を設定
         sprite_name = self._get_sprite_name(stats)
         self.flower_sprite.set_icon(sprite_name)
+        # 状態情報を渡して擬人化キャラクターを描画
+        self.flower_sprite.set_character_state(stats)
 
     def _get_sprite_name(self, stats: FlowerStats) -> str:
         """成長段階に応じたスプライト名を取得"""
