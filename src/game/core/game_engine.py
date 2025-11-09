@@ -616,7 +616,8 @@ class GameEngine:
             self._emit_info("今はこれ以上栄養行為ができません")
 
     def _emit_invalid(self, message: str) -> None:
-        self.event_manager.emit_simple(EventType.INVALID_ACTION, message=message)
+        self._invalid_message = message
+        self._invalid_message_timer = 2.0
 
     def _emit_info(self, message: str, duration: float = 2.0) -> None:
         self._info_message = message

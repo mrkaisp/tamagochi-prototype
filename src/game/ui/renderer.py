@@ -245,12 +245,17 @@ class UIRenderer:
             vertical=False,
         )
 
-        # 情報メッセージを表示
+        # 情報メッセージと無効メッセージを表示
         info_message = game_state.get("info_message", "")
+        invalid_message = game_state.get("invalid_message", "")
         if info_message:
             info_text = Text(Rect(10, 70, 108, 10), info_message, 8)
             info_text.color = Colors.GREEN
             info_text.render(surface)
+        elif invalid_message:
+            invalid_text = Text(Rect(10, 70, 108, 10), invalid_message, 8)
+            invalid_text.color = Colors.RED
+            invalid_text.render(surface)
 
     def _render_flower_language(
         self, surface: pg.Surface, game_state: Dict[str, Any]
