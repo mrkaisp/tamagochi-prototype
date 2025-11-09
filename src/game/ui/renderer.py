@@ -26,30 +26,18 @@ class UIRenderer:
         # 花のスプライト（キャラクター表示 - 表情で状態を表現）
         self.flower_sprite = Icon(Rect(44, 45, 40, 40), "flower")
 
-        # 操作説明
-        # 1/2/3 は 左/決定/右 のナビに使用
-        self.controls_text = Text(Rect(6, 110, 120, 15), "1:左 2:決定 3:右", 8)
-
         # 種選択画面用
         self.seed_selection_title = Text(
             Rect(20, 12, 88, 14), "種を選択してください", 16
         )
-        self.seed_options = [
-            Text(Rect(20, 38, 88, 10), "1:太陽 2:月", 8),
-            Text(Rect(20, 53, 88, 10), "3:風 4:雨", 8),
-        ]
-        self.seed_navigation_hint = Text(Rect(20, 68, 88, 10), "決定:中央/2", 8)
 
         # コンポーネントリストに追加
         self.components.extend(
             [
                 self.flower_sprite,
-                self.controls_text,
                 self.seed_selection_title,
-                self.seed_navigation_hint,
             ]
         )
-        self.components.extend(self.seed_options)
 
     def render(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ゲーム状態をレンダリング"""
@@ -96,15 +84,9 @@ class UIRenderer:
             surface, menu_items, cursor_index, start_y=40, item_height=14
         )
 
-        # 説明テキスト
-        hint = Text(Rect(20, 90, 88, 10), "1/3:選択 2:決定", 8)
-        hint.render(surface)
-
     def _render_title(self, surface: pg.Surface) -> None:
         title = Text(Rect(18, 30, 88, 20), "ふらわっち", 20)
-        prompt = Text(Rect(18, 60, 88, 10), "決定で開始", 10)
         title.render(surface)
-        prompt.render(surface)
 
     def _render_time_setting(
         self, surface: pg.Surface, game_state: Dict[str, Any]
@@ -128,9 +110,6 @@ class UIRenderer:
             surface, menu_items, cursor_index, start_y=45, item_height=14
         )
 
-        hint = Text(Rect(10, 100, 108, 10), "1/3:選択 2:実行", 8)
-        hint.render(surface)
-
     def _render_settings(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         title = Text(Rect(14, 20, 100, 12), "設定", 12)
         title.render(surface)
@@ -141,9 +120,6 @@ class UIRenderer:
         self._render_menu_items(
             surface, menu_items, cursor_index, start_y=45, item_height=14
         )
-
-        hint = Text(Rect(10, 100, 108, 10), "1/3:選択 2:決定", 8)
-        hint.render(surface)
 
     def _render_status(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ステータス画面をレンダリング（モダンデザイン）"""
@@ -276,9 +252,6 @@ class UIRenderer:
             info_text.color = Colors.GREEN
             info_text.render(surface)
 
-        hint = Text(Rect(10, 100, 110, 10), "1/3:選択 2:実行", 8)
-        hint.render(surface)
-
     def _render_flower_language(
         self, surface: pg.Surface, game_state: Dict[str, Any]
     ) -> None:
@@ -292,14 +265,9 @@ class UIRenderer:
             surface, menu_items, cursor_index, start_y=45, item_height=14
         )
 
-        hint = Text(Rect(8, 100, 110, 10), "1/3:選択 2:決定", 8)
-        hint.render(surface)
-
     def _render_death(self, surface: pg.Surface) -> None:
         title = Text(Rect(18, 20, 100, 12), "枯れてしまった…", 12)
-        tip = Text(Rect(8, 40, 110, 10), "決定でタイトル", 8)
         title.render(surface)
-        tip.render(surface)
 
     def _render_game_play(
         self, surface: pg.Surface, game_state: Dict[str, Any]
@@ -311,9 +279,6 @@ class UIRenderer:
 
         # 花のスプライトを更新（表情で状態を表現）
         self._update_flower_sprite(flower_stats)
-
-        # 操作説明を更新
-        self._update_controls_text(flower_stats)
 
         # 右上に時間状態を表示
         paused = game_state.get("paused", False)
@@ -334,27 +299,21 @@ class UIRenderer:
             msg.render(surface)
 
 
-        # メイン画面でメニュー項目を表示
+        # メイン画面でメニュー項目を表示（画面下部に配置）
         screen_state = game_state.get("screen_state", "")
         if screen_state == "MAIN":
             menu_items = game_state.get("menu_items", [])
             cursor_index = game_state.get("cursor_index", 0)
             if menu_items:
-                # メニューを縦に並べて表示
+                # メニューを縦に並べて表示（キャラクターと重ならないように画面下部に配置）
+                # キャラクターは Y=45-85 を使用、メニューは Y=90 以降に配置
                 self._render_menu_items(
-                    surface, menu_items, cursor_index, start_y=50, item_height=10
+                    surface, menu_items, cursor_index, start_y=90, item_height=10
                 )
 
         # すべてのコンポーネントをレンダリング（種選択画面用は除外）
         for component in self.components:
-            if (
-                component
-                not in [
-                    self.seed_selection_title, 
-                    self.seed_navigation_hint,
-                ]
-                + self.seed_options
-            ):
+            if component != self.seed_selection_title:
                 component.render(surface)
 
     def _update_flower_sprite(self, stats: FlowerStats) -> None:
@@ -377,13 +336,6 @@ class UIRenderer:
             return "flower"
         else:
             return "seed"
-
-    def _update_controls_text(self, stats: FlowerStats) -> None:
-        """操作説明を更新"""
-        if stats.is_fully_grown:
-            self.controls_text.set_text("2:決定で花言葉/戻る")
-        else:
-            self.controls_text.set_text("1:左 2:決定 3:右")
 
     def _render_menu_items(
         self,
