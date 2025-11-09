@@ -1,6 +1,6 @@
 import pygame as pg
 from typing import List, Dict, Any, Optional
-from .components import UIComponent, ProgressBar, Icon, Text, Colors, Rect, DigitalClock
+from .components import UIComponent, Icon, Text, Colors, Rect
 from ..entities.flower import FlowerStats, SeedType, GrowthStage
 from .font_manager import get_font_manager
 from ..utils.helpers import format_time_digital
@@ -23,35 +23,12 @@ class UIRenderer:
 
     def _setup_components(self) -> None:
         """UIコンポーネントを設定"""
-        # ステータスバー
-        self.water_icon = Icon(Rect(6, 6, 10, 10), "water")
-        self.water_bar = ProgressBar(Rect(18, 8, 45, 6), color=Colors.BLUE)
-        self.water_label = Text(Rect(65, 8, 25, 10), "水", 8)
-
-        self.light_icon = Icon(Rect(6, 16, 10, 10), "light")
-        self.light_bar = ProgressBar(Rect(18, 18, 45, 6), color=Colors.YELLOW)
-        self.light_label = Text(Rect(65, 18, 25, 10), "光", 8)
-
-        # 花のスプライト
+        # 花のスプライト（キャラクター表示 - 表情で状態を表現）
         self.flower_sprite = Icon(Rect(44, 45, 40, 40), "flower")
-
-        # 雑草・害虫インジケーター
-        self.weed_indicator = Text(Rect(90, 100, 30, 10), "雑草:0", 8)
-        self.pest_indicator = Text(Rect(90, 110, 30, 10), "害虫:0", 8)
-        self.env_indicator = Text(Rect(6, 28, 60, 10), "環境:0", 8)
-        self.mental_indicator = Text(Rect(70, 28, 50, 10), "言葉:0", 8)
 
         # 操作説明
         # 1/2/3 は 左/決定/右 のナビに使用
         self.controls_text = Text(Rect(6, 110, 120, 15), "1:左 2:決定 3:右", 8)
-
-        # 年齢表示（デジタル時計風）
-        self.age_clock = DigitalClock(
-            Rect(103, 5, DIGITAL_CLOCK_WIDTH, DIGITAL_CLOCK_HEIGHT), Colors.BLACK
-        )
-
-        # 成長段階表示
-        self.growth_stage_text = Text(Rect(6, 95, 80, 10), "種", 8)
 
         # 種選択画面用
         self.seed_selection_title = Text(
@@ -66,20 +43,8 @@ class UIRenderer:
         # コンポーネントリストに追加
         self.components.extend(
             [
-                self.water_icon,
-                self.water_bar,
-                self.water_label,
-                self.light_icon,
-                self.light_bar,
-                self.light_label,
                 self.flower_sprite,
-                self.weed_indicator,
-                self.pest_indicator,
-                self.env_indicator,
-                self.mental_indicator,
                 self.controls_text,
-                self.age_clock,
-                self.growth_stage_text,
                 self.seed_selection_title,
                 self.seed_navigation_hint,
             ]
@@ -344,20 +309,8 @@ class UIRenderer:
         if not flower_stats:
             return
 
-        # 花のスプライトを更新
+        # 花のスプライトを更新（表情で状態を表現）
         self._update_flower_sprite(flower_stats)
-
-        # 雑草・害虫表示を更新
-        self._update_indicators(flower_stats)
-
-        # 環境/言葉表示
-        self._update_env_mental(flower_stats)
-
-        # 成長段階表示を更新
-        self._update_growth_stage(flower_stats)
-
-        # 年齢表示を更新
-        self._update_age_display(flower_stats)
 
         # 操作説明を更新
         self._update_controls_text(flower_stats)
@@ -380,12 +333,6 @@ class UIRenderer:
             msg = Text(Rect(10, 78, 108, 10), invalid, 8)
             msg.render(surface)
 
-        # 栄養行為残回数
-        remaining = game_state.get("nutrition_remaining")
-        limit = game_state.get("nutrition_limit")
-        if remaining is not None and limit is not None:
-            label = Text(Rect(6, 36, 80, 10), f"栄養行為: {remaining}/{limit}", 8)
-            label.render(surface)
 
         # メイン画面でメニュー項目を表示
         screen_state = game_state.get("screen_state", "")
@@ -398,33 +345,17 @@ class UIRenderer:
                     surface, menu_items, cursor_index, start_y=50, item_height=10
                 )
 
-        # すべてのコンポーネントをレンダリング（水・光バーは除外）
+        # すべてのコンポーネントをレンダリング（種選択画面用は除外）
         for component in self.components:
             if (
                 component
                 not in [
                     self.seed_selection_title, 
                     self.seed_navigation_hint,
-                    self.water_icon,
-                    self.water_bar,
-                    self.water_label,
-                    self.light_icon,
-                    self.light_bar,
-                    self.light_label
                 ]
                 + self.seed_options
             ):
                 component.render(surface)
-
-    def _update_status_bars(self, stats: FlowerStats) -> None:
-        """ステータスバーを更新"""
-        # 水の量
-        water_percentage = stats.water_level / 100.0
-        self.water_bar.set_value(water_percentage)
-
-        # 光の蓄積量
-        light_percentage = stats.light_level / 100.0
-        self.light_bar.set_value(light_percentage)
 
     def _update_flower_sprite(self, stats: FlowerStats) -> None:
         """花のスプライトを更新"""
@@ -446,25 +377,6 @@ class UIRenderer:
             return "flower"
         else:
             return "seed"
-
-    def _update_indicators(self, stats: FlowerStats) -> None:
-        """雑草・害虫インジケーターを更新"""
-        self.weed_indicator.set_text(f"雑草:{stats.weed_count}")
-        self.pest_indicator.set_text(f"害虫:{stats.pest_count}")
-
-    def _update_env_mental(self, stats: FlowerStats) -> None:
-        self.env_indicator.set_text(f"環境:{int(stats.environment_level)}")
-        self.mental_indicator.set_text(f"言葉:{int(stats.mental_level)}")
-
-    def _update_growth_stage(self, stats: FlowerStats) -> None:
-        """成長段階表示を更新"""
-        stage_text = f"{stats.growth_stage_display} ({stats.seed_type.value})"
-        self.growth_stage_text.set_text(stage_text)
-
-    def _update_age_display(self, stats: FlowerStats) -> None:
-        """年齢表示を更新"""
-        age_text = stats.age_digital
-        self.age_clock.set_time(age_text)
 
     def _update_controls_text(self, stats: FlowerStats) -> None:
         """操作説明を更新"""
