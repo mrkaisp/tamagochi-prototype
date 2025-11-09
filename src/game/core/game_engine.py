@@ -598,6 +598,9 @@ class GameEngine:
             return hour >= start or hour < end
 
     def _can_perform_nutrition_action(self) -> bool:
+        # テスト用オプション: 制限を無効化
+        if config.game.nutrition_limit_disabled:
+            return True
         # 1時間内：3回まで
         return self._nutrition_actions_in_current_hour < self._nutrition_action_limit
 
