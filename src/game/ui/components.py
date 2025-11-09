@@ -99,10 +99,16 @@ class Icon(UIComponent):
     def __init__(self, rect: Rect, icon_type: str):
         super().__init__(rect)
         self.icon_type = icon_type
+        # 擬人化キャラクター用の状態情報
+        self.character_state = None  # FlowerStatsオブジェクトを保持
     
     def set_icon(self, icon_type: str) -> None:
         """アイコンタイプを設定"""
         self.icon_type = icon_type
+    
+    def set_character_state(self, stats) -> None:
+        """擬人化キャラクターの状態を設定"""
+        self.character_state = stats
     
     def draw(self, surface: pg.Surface) -> None:
         """描画"""
@@ -131,33 +137,297 @@ class Icon(UIComponent):
                 x2 = center[0] + int(8 * pg.math.Vector2(1, 0).rotate_rad(angle).x)
                 y2 = center[1] + int(8 * pg.math.Vector2(1, 0).rotate_rad(angle).y)
                 pg.draw.line(surface, Colors.YELLOW, (x1, y1), (x2, y2), 1)
-        elif self.icon_type == "seed":
-            # 種のアイコン
+        elif self.icon_type in ["seed", "sprout", "stem", "bud", "flower"]:
+            # 擬人化キャラクターを描画
+            if self.character_state:
+                self._draw_character(surface, center)
+            else:
+                # フォールバック: 従来の描画
+                self._draw_fallback_icon(surface, center)
+    
+    def _draw_fallback_icon(self, surface: pg.Surface, center: Tuple[int, int]) -> None:
+        """フォールバック: 従来のアイコン描画"""
+        if self.icon_type == "seed":
             pg.draw.ellipse(surface, Colors.BROWN, (center[0]-3, center[1]-2, 6, 4))
             pg.draw.ellipse(surface, Colors.BLACK, (center[0]-3, center[1]-2, 6, 4), 1)
         elif self.icon_type == "sprout":
-            # 芽のアイコン
             pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+3), (center[0], center[1]-3), 2)
             pg.draw.ellipse(surface, Colors.GREEN, (center[0]-2, center[1]-4, 4, 3))
         elif self.icon_type == "stem":
-            # 茎のアイコン
             pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-5), 3)
             pg.draw.ellipse(surface, Colors.GREEN, (center[0]-3, center[1]-6, 6, 4))
         elif self.icon_type == "bud":
-            # 蕾のアイコン
             pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-2), 3)
             pg.draw.ellipse(surface, Colors.PINK, (center[0]-3, center[1]-4, 6, 5))
         elif self.icon_type == "flower":
-            # 花のアイコン
             pg.draw.line(surface, Colors.GREEN, (center[0], center[1]+5), (center[0], center[1]-3), 3)
-            # 花びら
             for i in range(5):
                 angle = i * 2 * 3.14159 / 5
                 x = center[0] + int(4 * pg.math.Vector2(1, 0).rotate_rad(angle).x)
                 y = center[1] + int(4 * pg.math.Vector2(1, 0).rotate_rad(angle).y)
                 pg.draw.circle(surface, Colors.PINK, (x, y), 2)
-            # 中心
             pg.draw.circle(surface, Colors.YELLOW, center, 2)
+    
+    def _draw_character(self, surface: pg.Surface, center: Tuple[int, int]) -> None:
+        """擬人化キャラクターを描画（仕様書に基づく）"""
+        from ..entities.flower import GrowthStage
+        
+        stats = self.character_state
+        growth_stage = stats.growth_stage
+        
+        # 状態判定（優先順位: 栄養 > 環境 > メンタル）
+        water_level = stats.water_level
+        env_level = stats.environment_level
+        weed_count = stats.weed_count
+        pest_count = stats.pest_count
+        mental_level = stats.mental_level
+        
+        # 栄養状態判定
+        if water_level >= 60:
+            nutrition_state = "good"
+        elif water_level >= 30:
+            nutrition_state = "normal"
+        else:
+            nutrition_state = "weak"
+        
+        # 環境状態判定
+        if env_level >= 60 and weed_count == 0 and pest_count == 0:
+            env_state = "good"
+        elif env_level >= 30 and weed_count <= 2 and pest_count <= 1:
+            env_state = "normal"
+        else:
+            env_state = "bad"
+        
+        # メンタル状態判定
+        if mental_level >= 60:
+            mental_state = "good"
+        elif mental_level >= 30:
+            mental_state = "normal"
+        else:
+            mental_state = "low"
+        
+        # 成長段階に応じて描画
+        if growth_stage == GrowthStage.SEED:
+            self._draw_seed(surface, center, nutrition_state)
+        elif growth_stage == GrowthStage.SPROUT:
+            self._draw_sprout(surface, center, nutrition_state, env_state)
+        elif growth_stage == GrowthStage.STEM:
+            self._draw_stem(surface, center, nutrition_state, env_state)
+        elif growth_stage == GrowthStage.BUD:
+            self._draw_bud(surface, center, nutrition_state, env_state, mental_state)
+        elif growth_stage == GrowthStage.FLOWER:
+            self._draw_flower(surface, center, nutrition_state, env_state, mental_state)
+    
+    def _draw_seed(self, surface: pg.Surface, center: Tuple[int, int], nutrition: str) -> None:
+        """種の擬人化キャラクターを描画"""
+        cx, cy = center
+        
+        # 体（丸い種）
+        body_size = 8 if nutrition == "good" else (7 if nutrition == "normal" else 6)
+        body_y_offset = 2 if nutrition == "good" else (1 if nutrition == "normal" else 0)
+        
+        pg.draw.ellipse(surface, Colors.BROWN, 
+                       (cx - body_size//2, cy - body_size//2 + body_y_offset, body_size, body_size))
+        pg.draw.ellipse(surface, Colors.BLACK, 
+                       (cx - body_size//2, cy - body_size//2 + body_y_offset, body_size, body_size), 1)
+        
+        # 顔
+        if nutrition == "good":
+            # 目を開けて、やや上向き
+            pg.draw.circle(surface, Colors.BLACK, (cx - 2, cy - 1 + body_y_offset), 1)
+            pg.draw.circle(surface, Colors.BLACK, (cx + 2, cy - 1 + body_y_offset), 1)
+            # 笑顔
+            pg.draw.arc(surface, Colors.BLACK, (cx - 3, cy + body_y_offset, 6, 4), 0, 3.14, 1)
+        elif nutrition == "normal":
+            # 目は半開き
+            pg.draw.line(surface, Colors.BLACK, (cx - 2, cy + body_y_offset), (cx - 1, cy + body_y_offset), 1)
+            pg.draw.line(surface, Colors.BLACK, (cx + 1, cy + body_y_offset), (cx + 2, cy + body_y_offset), 1)
+            # 落ち着いた表情
+            pg.draw.line(surface, Colors.BLACK, (cx - 2, cy + 2 + body_y_offset), (cx + 2, cy + 2 + body_y_offset), 1)
+        else:
+            # 目を閉じている、しょんぼり
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, cy - 1 + body_y_offset, 4, 2), 0, 3.14, 1)
+            pg.draw.arc(surface, Colors.BLACK, (cx + 2, cy - 1 + body_y_offset, 4, 2), 0, 3.14, 1)
+            # 下向きの口
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, cy + 1 + body_y_offset, 4, 2), 3.14, 6.28, 1)
+    
+    def _draw_sprout(self, surface: pg.Surface, center: Tuple[int, int], 
+                     nutrition: str, env: str) -> None:
+        """芽の擬人化キャラクターを描画"""
+        cx, cy = center
+        
+        # 体（細長い）
+        body_height = 12 if nutrition == "good" else (10 if nutrition == "normal" else 8)
+        body_y = cy - body_height // 2
+        
+        # 姿勢調整
+        if nutrition == "weak" or env == "bad":
+            body_y += 1  # うつむき加減
+        
+        pg.draw.line(surface, Colors.GREEN, (cx, cy + 5), (cx, body_y), 3)
+        
+        # 葉（頭部）
+        if nutrition == "good" and env == "good":
+            # 葉を広げて、明るい笑顔
+            pg.draw.ellipse(surface, Colors.GREEN, (cx - 4, body_y - 3, 8, 5))
+            pg.draw.ellipse(surface, Colors.GREEN, (cx - 4, body_y - 3, 8, 5), 1)
+            # 顔
+            pg.draw.circle(surface, Colors.BLACK, (cx - 2, body_y - 1), 1)
+            pg.draw.circle(surface, Colors.BLACK, (cx + 2, body_y - 1), 1)
+            pg.draw.arc(surface, Colors.BLACK, (cx - 3, body_y, 6, 4), 0, 3.14, 1)
+        elif nutrition == "normal":
+            # 葉を少し垂らし、穏やかな表情
+            pg.draw.ellipse(surface, Colors.GREEN, (cx - 3, body_y - 2, 6, 4))
+            pg.draw.line(surface, Colors.BLACK, (cx - 1, body_y), (cx + 1, body_y), 1)
+        else:
+            # 葉が萎れ気味、困った表情
+            pg.draw.ellipse(surface, Colors.DARK_GRAY, (cx - 3, body_y - 2, 6, 3))
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, body_y - 1, 4, 2), 3.14, 6.28, 1)
+    
+    def _draw_stem(self, surface: pg.Surface, center: Tuple[int, int],
+                   nutrition: str, env: str) -> None:
+        """茎の擬人化キャラクターを描画"""
+        cx, cy = center
+        
+        # 体（細長い茎）
+        body_height = 16 if nutrition == "good" else (14 if nutrition == "normal" else 12)
+        body_y = cy - body_height // 2
+        
+        # 姿勢調整
+        if nutrition == "good" and env == "good":
+            # 背筋をピンと伸ばし
+            pg.draw.line(surface, Colors.GREEN, (cx, cy + 6), (cx, body_y), 4)
+        elif nutrition == "weak" or env == "bad":
+            # 茎が曲がる、疲れた表情
+            pg.draw.line(surface, Colors.GREEN, (cx, cy + 6), (cx - 1, body_y), 3)
+            body_y += 1
+        else:
+            # やや前傾姿勢
+            pg.draw.line(surface, Colors.GREEN, (cx, cy + 6), (cx, body_y), 3)
+        
+        # 葉
+        if nutrition == "good" and env == "good":
+            # 葉を広げる
+            pg.draw.ellipse(surface, Colors.GREEN, (cx - 5, body_y - 2, 10, 6))
+            pg.draw.ellipse(surface, Colors.GREEN, (cx - 3, body_y + 2, 6, 4))
+        elif nutrition == "weak" or env == "bad":
+            # 葉が垂れる
+            pg.draw.ellipse(surface, Colors.DARK_GRAY, (cx - 3, body_y, 6, 3))
+        
+        # 顔
+        face_y = body_y - 2
+        if nutrition == "good" and env == "good":
+            # 自信に満ちた表情
+            pg.draw.circle(surface, Colors.BLACK, (cx - 2, face_y), 1)
+            pg.draw.circle(surface, Colors.BLACK, (cx + 2, face_y), 1)
+            pg.draw.arc(surface, Colors.BLACK, (cx - 3, face_y + 1, 6, 4), 0, 3.14, 1)
+        elif nutrition == "normal":
+            # 落ち着いた表情
+            pg.draw.line(surface, Colors.BLACK, (cx - 2, face_y), (cx + 2, face_y), 1)
+        else:
+            # 疲れた表情
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, face_y - 1, 4, 2), 3.14, 6.28, 1)
+    
+    def _draw_bud(self, surface: pg.Surface, center: Tuple[int, int],
+                  nutrition: str, env: str, mental: str) -> None:
+        """蕾の擬人化キャラクターを描画"""
+        cx, cy = center
+        
+        # 体（丸みを帯びた蕾）
+        bud_size = 10 if nutrition == "good" and mental == "good" else (8 if nutrition == "normal" else 6)
+        bud_y = cy - bud_size // 2
+        
+        # 姿勢調整
+        if nutrition == "good" and env == "good" and mental == "good":
+            bud_y -= 1  # やや上向き
+        elif nutrition == "weak" or env == "bad" or mental == "low":
+            bud_y += 1  # うつむき加減
+        
+        # 蕾の形
+        pg.draw.ellipse(surface, Colors.PINK, (cx - bud_size//2, bud_y, bud_size, bud_size + 2))
+        pg.draw.ellipse(surface, Colors.BLACK, (cx - bud_size//2, bud_y, bud_size, bud_size + 2), 1)
+        
+        # 茎
+        pg.draw.line(surface, Colors.GREEN, (cx, cy + 6), (cx, bud_y + bud_size + 2), 3)
+        
+        # 顔
+        face_y = bud_y + bud_size // 2
+        if nutrition == "good" and env == "good" and mental == "good":
+            # 期待に満ちた表情
+            pg.draw.circle(surface, Colors.BLACK, (cx - 2, face_y - 1), 1)
+            pg.draw.circle(surface, Colors.BLACK, (cx + 2, face_y - 1), 1)
+            pg.draw.arc(surface, Colors.BLACK, (cx - 3, face_y, 6, 4), 0, 3.14, 1)
+        elif nutrition == "normal":
+            # 穏やかな表情
+            pg.draw.line(surface, Colors.BLACK, (cx - 1, face_y), (cx + 1, face_y), 1)
+        else:
+            # 不安そうな表情
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, face_y - 1, 4, 2), 3.14, 6.28, 1)
+    
+    def _draw_flower(self, surface: pg.Surface, center: Tuple[int, int],
+                    nutrition: str, env: str, mental: str) -> None:
+        """花の擬人化キャラクターを描画"""
+        cx, cy = center
+        
+        # 茎
+        stem_height = 8
+        stem_y = cy + 6
+        
+        # 姿勢調整
+        if nutrition == "good" and env == "good" and mental == "good":
+            # 自信に満ちた姿勢
+            pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx, cy - 4), 3)
+            flower_y = cy - 4
+        elif nutrition == "weak" or env == "bad" or mental == "low":
+            # やや前傾姿勢
+            pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx - 1, cy - 2), 3)
+            flower_y = cy - 2
+        else:
+            # 標準的な姿勢
+            pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx, cy - 3), 3)
+            flower_y = cy - 3
+        
+        # 花びら
+        petal_size = 5 if nutrition == "good" and mental == "good" else (4 if nutrition == "normal" else 3)
+        petal_count = 5
+        
+        if nutrition == "good" and env == "good" and mental == "good":
+            # 花びらを広げ
+            for i in range(petal_count):
+                angle = i * 2 * 3.14159 / petal_count
+                x = cx + int(petal_size * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y = flower_y + int(petal_size * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                pg.draw.circle(surface, Colors.PINK, (x, y), 2)
+        elif nutrition == "normal":
+            # 花びらを適度に広げ
+            for i in range(petal_count):
+                angle = i * 2 * 3.14159 / petal_count
+                x = cx + int((petal_size - 1) * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y = flower_y + int((petal_size - 1) * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                pg.draw.circle(surface, Colors.PINK, (x, y), 1)
+        else:
+            # 花びらが閉じ気味
+            for i in range(petal_count):
+                angle = i * 2 * 3.14159 / petal_count
+                x = cx + int((petal_size - 2) * pg.math.Vector2(1, 0).rotate_rad(angle).x)
+                y = flower_y + int((petal_size - 2) * pg.math.Vector2(1, 0).rotate_rad(angle).y)
+                pg.draw.circle(surface, Colors.DARK_GRAY, (x, y), 1)
+        
+        # 中心
+        pg.draw.circle(surface, Colors.YELLOW, (cx, flower_y), 2)
+        
+        # 顔
+        if nutrition == "good" and env == "good" and mental == "good":
+            # 明るい笑顔
+            pg.draw.circle(surface, Colors.BLACK, (cx - 2, flower_y - 1), 1)
+            pg.draw.circle(surface, Colors.BLACK, (cx + 2, flower_y - 1), 1)
+            pg.draw.arc(surface, Colors.BLACK, (cx - 3, flower_y, 6, 4), 0, 3.14, 1)
+        elif nutrition == "normal":
+            # 穏やかな表情
+            pg.draw.line(surface, Colors.BLACK, (cx - 1, flower_y), (cx + 1, flower_y), 1)
+        else:
+            # 疲れた表情
+            pg.draw.arc(surface, Colors.BLACK, (cx - 2, flower_y - 1, 4, 2), 3.14, 6.28, 1)
 
 class Text(UIComponent):
     """テキストコンポーネント（美咲フォント対応）"""

@@ -37,6 +37,8 @@ class GameConfig:
     sleep_end_hour: int = 6
     # 成長/分岐用
     growth_age_threshold_flower: float = 60.0
+    # テスト用オプション
+    nutrition_limit_disabled: bool = True  # Trueにすると1時間3回制限を無効化
 
 @dataclass
 class DataConfig:
