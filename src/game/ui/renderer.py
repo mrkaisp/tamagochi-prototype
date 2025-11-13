@@ -8,8 +8,8 @@ from .menu_system import MenuCursor, MenuItem
 
 # 定数定義
 DISPLAY_MARGIN = 2
-DISPLAY_WIDTH = 124
-DISPLAY_HEIGHT = 124
+DISPLAY_WIDTH = 236
+DISPLAY_HEIGHT = 236
 DIGITAL_CLOCK_WIDTH = 20
 DIGITAL_CLOCK_HEIGHT = 6
 
@@ -24,11 +24,12 @@ class UIRenderer:
     def _setup_components(self) -> None:
         """UIコンポーネントを設定"""
         # 花のスプライト（キャラクター表示 - 表情で状態を表現）
-        self.flower_sprite = Icon(Rect(44, 45, 40, 40), "flower")
+        # 240×240画面の中央に配置、サイズを拡大
+        self.flower_sprite = Icon(Rect(80, 80, 80, 80), "flower")
 
         # 種選択画面用
         self.seed_selection_title = Text(
-            Rect(20, 12, 88, 14), "種を選択してください", 16
+            Rect(40, 24, 160, 26), "種を選択してください", 16
         )
 
         # コンポーネントリストに追加
@@ -74,30 +75,30 @@ class UIRenderer:
     ) -> None:
         """種選択画面をレンダリング"""
         # タイトル
-        title = Text(Rect(20, 12, 88, 14), "種を選択してください", 16)
+        title = Text(Rect(40, 24, 160, 26), "種を選択してください", 16)
         title.render(surface)
 
         # メニュー項目とカーソルを表示
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         self._render_menu_items(
-            surface, menu_items, cursor_index, start_y=40, item_height=14
+            surface, menu_items, cursor_index, start_y=75, item_height=26
         )
 
     def _render_title(self, surface: pg.Surface) -> None:
-        title = Text(Rect(18, 30, 88, 20), "ふらわっち", 20)
+        title = Text(Rect(50, 100, 140, 40), "ふらわっち", 20)
         title.render(surface)
 
     def _render_time_setting(
         self, surface: pg.Surface, game_state: Dict[str, Any]
     ) -> None:
-        title = Text(Rect(10, 10, 108, 12), "時間設定", 12)
+        title = Text(Rect(70, 20, 100, 22), "時間設定", 12)
         title.render(surface)
 
         paused = game_state.get("paused", False)
         time_scale = game_state.get("time_scale", 1.0)
         status_text = Text(
-            Rect(10, 26, 108, 10),
+            Rect(20, 50, 200, 18),
             f"一時停止: {'ON' if paused else 'OFF'}  時間: x{time_scale:g}",
             8,
         )
@@ -107,54 +108,54 @@ class UIRenderer:
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         self._render_menu_items(
-            surface, menu_items, cursor_index, start_y=45, item_height=14
+            surface, menu_items, cursor_index, start_y=85, item_height=26
         )
 
     def _render_settings(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
-        title = Text(Rect(14, 20, 100, 12), "設定", 12)
+        title = Text(Rect(90, 40, 60, 22), "設定", 12)
         title.render(surface)
 
         # メニュー項目とカーソルを表示
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         self._render_menu_items(
-            surface, menu_items, cursor_index, start_y=45, item_height=14
+            surface, menu_items, cursor_index, start_y=85, item_height=26
         )
 
     def _render_status(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ステータス画面をレンダリング（モダンデザイン）"""
         # グラデーション背景
-        for i in range(128):
+        for i in range(240):
             color_val = 25 + int(i * 0.2)
-            pg.draw.line(surface, (color_val, color_val + 15, color_val + 10), (0, i), (128, i))
+            pg.draw.line(surface, (color_val, color_val + 15, color_val + 10), (0, i), (240, i))
         
         # タイトルバー
-        pg.draw.rect(surface, (20, 35, 30), (0, 0, 128, 16))
-        pg.draw.line(surface, (100, 200, 150), (0, 16), (128, 16), 2)
-        title = Text(Rect(10, 4, 108, 12), "詳細ステータス", 12)
+        pg.draw.rect(surface, (20, 35, 30), (0, 0, 240, 30))
+        pg.draw.line(surface, (100, 200, 150), (0, 30), (240, 30), 2)
+        title = Text(Rect(20, 8, 200, 22), "詳細ステータス", 12)
         title.color = (200, 255, 220)
         title.render(surface)
         
         flower_stats = game_state.get("flower_stats_dict", {})
-        y = 20
+        y = 38
         
         # 基本情報カード
-        pg.draw.rect(surface, (45, 65, 55), (4, y, 120, 28))
-        pg.draw.rect(surface, (120, 180, 150), (4, y, 120, 28), 2)
+        pg.draw.rect(surface, (45, 65, 55), (8, y, 224, 52))
+        pg.draw.rect(surface, (120, 180, 150), (8, y, 224, 52), 2)
         
-        seed_text = Text(Rect(8, y + 3, 60, 8), f"{flower_stats.get('seed_type', '未選択')}", 8)
+        seed_text = Text(Rect(16, y + 6, 120, 15), f"{flower_stats.get('seed_type', '未選択')}", 8)
         seed_text.color = (255, 255, 150)
         seed_text.render(surface)
         
-        stage_text = Text(Rect(8, y + 12, 112, 8), f"成長: {flower_stats.get('growth_stage', '不明')}", 8)
+        stage_text = Text(Rect(16, y + 22, 210, 15), f"成長: {flower_stats.get('growth_stage', '不明')}", 8)
         stage_text.color = (200, 255, 200)
         stage_text.render(surface)
         
-        age_text = Text(Rect(8, y + 20, 112, 8), f"年齢: {flower_stats.get('age_formatted', '0秒')}", 8)
+        age_text = Text(Rect(16, y + 38, 210, 15), f"年齢: {flower_stats.get('age_formatted', '0秒')}", 8)
         age_text.color = (180, 220, 255)
         age_text.render(surface)
         
-        y += 32
+        y += 60
         
         # ステータスバー
         water_level = flower_stats.get('water_level', 0)
@@ -162,23 +163,23 @@ class UIRenderer:
         env_level = flower_stats.get('environment_level', 0)
         mental_level = flower_stats.get('mental_level', 0)
         
-        self._render_modern_stat(surface, 4, y, "水分", water_level, (100, 180, 255))
-        y += 13
-        self._render_modern_stat(surface, 4, y, "光量", light_level, (255, 220, 100))
-        y += 13
-        self._render_modern_stat(surface, 4, y, "環境", env_level, (120, 220, 150))
-        y += 13
-        self._render_modern_stat(surface, 4, y, "心情", mental_level, (255, 150, 200))
-        y += 16
+        self._render_modern_stat(surface, 8, y, "水分", water_level, (100, 180, 255))
+        y += 24
+        self._render_modern_stat(surface, 8, y, "光量", light_level, (255, 220, 100))
+        y += 24
+        self._render_modern_stat(surface, 8, y, "環境", env_level, (120, 220, 150))
+        y += 24
+        self._render_modern_stat(surface, 8, y, "心情", mental_level, (255, 150, 200))
+        y += 30
         
         # 問題表示
         weed_count = flower_stats.get('weed_count', 0)
         pest_count = flower_stats.get('pest_count', 0)
         
         if weed_count > 0 or pest_count > 0:
-            pg.draw.rect(surface, (80, 40, 40), (4, y, 120, 10))
-            pg.draw.rect(surface, (200, 100, 100), (4, y, 120, 10), 1)
-            problem_text = Text(Rect(8, y + 1, 112, 8), f"! 雑草:{weed_count} 害虫:{pest_count}", 8)
+            pg.draw.rect(surface, (80, 40, 40), (8, y, 224, 18))
+            pg.draw.rect(surface, (200, 100, 100), (8, y, 224, 18), 1)
+            problem_text = Text(Rect(16, y + 2, 210, 15), f"! 雑草:{weed_count} 害虫:{pest_count}", 8)
             problem_text.color = (255, 200, 100)
             problem_text.render(surface)
         
@@ -186,19 +187,19 @@ class UIRenderer:
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         if menu_items:
-            self._render_menu_items(surface, menu_items, cursor_index, start_y=108, item_height=10)
+            self._render_menu_items(surface, menu_items, cursor_index, start_y=200, item_height=18)
     
     def _render_modern_stat(self, surface: pg.Surface, x: int, y: int, label: str, value: float, color: tuple) -> None:
         """モダンなステータス表示"""
-        label_text = Text(Rect(x + 4, y, 28, 8), label, 8)
+        label_text = Text(Rect(x + 8, y, 52, 15), label, 8)
         label_text.color = (180, 180, 180)
         label_text.render(surface)
         
-        value_text = Text(Rect(x + 32, y, 24, 8), f"{value:.0f}%", 8)
+        value_text = Text(Rect(x + 60, y, 48, 15), f"{value:.0f}%", 8)
         value_text.color = color
         value_text.render(surface)
         
-        self._render_progress_bar(surface, x + 58, y + 1, 62, 7, value, 100)
+        self._render_progress_bar(surface, x + 110, y + 2, 116, 13, value, 100)
     
     def _render_progress_bar(self, surface: pg.Surface, x: int, y: int, width: int, height: int, value: float, max_value: float) -> None:
         """プログレスバーを10段階で描画"""
@@ -230,7 +231,7 @@ class UIRenderer:
     def _render_mode(
         self, surface: pg.Surface, game_state: Dict[str, Any], label: str
     ) -> None:
-        title = Text(Rect(14, 20, 100, 12), label, 12)
+        title = Text(Rect(70, 40, 100, 22), label, 12)
         title.render(surface)
 
         # メニュー項目とカーソルを表示
@@ -240,8 +241,8 @@ class UIRenderer:
             surface,
             menu_items,
             cursor_index,
-            start_y=45,
-            item_height=14,
+            start_y=85,
+            item_height=26,
             vertical=False,
         )
 
@@ -249,29 +250,29 @@ class UIRenderer:
         info_message = game_state.get("info_message", "")
         invalid_message = game_state.get("invalid_message", "")
         if info_message:
-            info_text = Text(Rect(10, 70, 108, 10), info_message, 8)
+            info_text = Text(Rect(20, 130, 200, 18), info_message, 8)
             info_text.color = Colors.GREEN
             info_text.render(surface)
         elif invalid_message:
-            invalid_text = Text(Rect(10, 70, 108, 10), invalid_message, 8)
+            invalid_text = Text(Rect(20, 130, 200, 18), invalid_message, 8)
             invalid_text.color = Colors.RED
             invalid_text.render(surface)
 
     def _render_flower_language(
         self, surface: pg.Surface, game_state: Dict[str, Any]
     ) -> None:
-        title = Text(Rect(8, 20, 110, 12), "花言葉を選ぶ", 12)
+        title = Text(Rect(50, 40, 140, 22), "花言葉を選ぶ", 12)
         title.render(surface)
 
         # メニュー項目とカーソルを表示
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         self._render_menu_items(
-            surface, menu_items, cursor_index, start_y=45, item_height=14
+            surface, menu_items, cursor_index, start_y=85, item_height=26
         )
 
     def _render_death(self, surface: pg.Surface) -> None:
-        title = Text(Rect(18, 20, 100, 12), "枯れてしまった…", 12)
+        title = Text(Rect(50, 100, 140, 22), "枯れてしまった…", 12)
         title.render(surface)
 
     def _render_game_play(
@@ -289,7 +290,7 @@ class UIRenderer:
         paused = game_state.get("paused", False)
         scale = game_state.get("time_scale", 1.0)
         time_text = Text(
-            Rect(80, 5, 44, 10), ("PAUSE" if paused else f"x{int(scale)}"), 8
+            Rect(150, 10, 80, 18), ("PAUSE" if paused else f"x{int(scale)}"), 8
         )
         time_text.render(surface)
 
@@ -297,10 +298,10 @@ class UIRenderer:
         info = game_state.get("info_message", "")
         invalid = game_state.get("invalid_message", "")
         if info:
-            msg = Text(Rect(10, 78, 108, 10), info, 8)
+            msg = Text(Rect(20, 145, 200, 18), info, 8)
             msg.render(surface)
         elif invalid:
-            msg = Text(Rect(10, 78, 108, 10), invalid, 8)
+            msg = Text(Rect(20, 145, 200, 18), invalid, 8)
             msg.render(surface)
 
 
@@ -311,9 +312,9 @@ class UIRenderer:
             cursor_index = game_state.get("cursor_index", 0)
             if menu_items:
                 # メニューを縦に並べて表示（キャラクターと重ならないように画面下部に配置）
-                # キャラクターは Y=45-85 を使用、メニューは Y=90 以降に配置
+                # キャラクターは Y=80-160 を使用、メニューは Y=170 以降に配置
                 self._render_menu_items(
-                    surface, menu_items, cursor_index, start_y=90, item_height=10
+                    surface, menu_items, cursor_index, start_y=170, item_height=18
                 )
 
         # すべてのコンポーネントをレンダリング（種選択画面用は除外）
@@ -369,29 +370,29 @@ class UIRenderer:
         for i, item in enumerate(menu_items):
             # 縦並びの場合
             if vertical:
-                x = 20
+                x = 40
                 y = start_y + i * item_height
-                cursor_x = 10
-                cursor_y = y + 1
+                cursor_x = 20
+                cursor_y = y + 2
             # 横並びの場合
             else:
-                # 項目の幅を動的に計算（最小30、ラベル長に応じて調整）
-                item_width = max(30, len(item.label) * 6 + 10)
-                x = 10 + sum(max(30, len(menu_items[j].label) * 6 + 10) for j in range(i))
+                # 項目の幅を動的に計算（最小56、ラベル長に応じて調整）
+                item_width = max(56, len(item.label) * 11 + 18)
+                x = 20 + sum(max(56, len(menu_items[j].label) * 11 + 18) for j in range(i))
                 y = start_y
-                cursor_x = x - 8
-                cursor_y = y + 1
+                cursor_x = x - 15
+                cursor_y = y + 2
 
             # メニュー項目テキスト
             color = Colors.BLACK if item.enabled else Colors.GRAY
-            text_width = 120 if vertical else max(30, len(item.label) * 6 + 5)
-            item_text = Text(Rect(x, y, text_width, 10), item.label, 8)
+            text_width = 200 if vertical else max(56, len(item.label) * 11 + 10)
+            item_text = Text(Rect(x, y, text_width, 18), item.label, 8)
             item_text.color = color
             item_text.render(surface)
 
             # カーソル表示（現在選択中の項目）
             if i == cursor_index and item.enabled:
-                cursor = Text(Rect(cursor_x, cursor_y, 8, 8), "→", 8)
+                cursor = Text(Rect(cursor_x, cursor_y, 15, 15), "→", 8)
                 cursor.render(surface)
 
     def update(self, dt: float) -> None:
