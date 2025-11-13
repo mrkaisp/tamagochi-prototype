@@ -4,8 +4,8 @@ from typing import Tuple, Optional
 @dataclass
 class DisplayConfig:
     """ディスプレイ関連の設定"""
-    logical_width: int = 128
-    logical_height: int = 128
+    logical_width: int = 240
+    logical_height: int = 240
     base_scale: int = 4
     fps: int = 30
     pixel_perfect: bool = True
