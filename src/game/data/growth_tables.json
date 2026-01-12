@@ -1,0 +1,79 @@
+{
+  "phase2_branch": {
+    "score_ranges": [
+      {
+        "min": 70,
+        "max": 100,
+        "result": "まっすぐ"
+      },
+      {
+        "min": 40,
+        "max": 69,
+        "result": "しなる"
+      },
+      {
+        "min": 0,
+        "max": 39,
+        "result": "つる"
+      }
+    ],
+    "default": "ふつう",
+    "seed_biases": {
+      "太陽": 5,
+      "月": 0,
+      "風": 2,
+      "雨": 2
+    },
+    "mental_bonus": {
+      "threshold": 70,
+      "bonus": 5
+    }
+  },
+  "phase3_shape": {
+    "seed_base_values": {
+      "太陽": 10,
+      "月": 5,
+      "風": 5,
+      "雨": 10
+    },
+    "phase2_branch_values": {
+      "まっすぐ": 10,
+      "しなる": 5,
+      "つる": 0,
+      "ふつう": 0
+    },
+    "light_tendency_values": {
+      "陽": 5,
+      "陰": -5
+    },
+    "shape_candidates": [
+      {
+        "name": "大輪",
+        "min_base": 20
+      },
+      {
+        "name": "まるまる",
+        "min_base": 15
+      },
+      {
+        "name": "ひらひら",
+        "min_base": 10
+      },
+      {
+        "name": "ちいさめ",
+        "min_base": 5
+      },
+      {
+        "name": "とがり",
+        "min_base": -999
+      }
+    ],
+    "default": "ふつう"
+  },
+  "light_requirements": {
+    "sprout": 20.0,
+    "stem": 40.0,
+    "bud": 60.0,
+    "flower": 80.0
+  }
+}

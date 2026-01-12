@@ -6,7 +6,7 @@ class DisplayConfig:
     """ディスプレイ関連の設定"""
     logical_width: int = 240
     logical_height: int = 240
-    base_scale: int = 4
+    base_scale: int = 1
     fps: int = 30
     pixel_perfect: bool = True
     smooth_scaling: bool = False
@@ -19,7 +19,7 @@ class GameConfig:
     
     # アクション効果量
     water_amount: float = 20.0  # 1回の水やりで20%増加（5回で100%）
-    light_amount: float = 15.0  # 1回の光で15%増加（約7回で100%）
+    light_amount: float = 1.0  # 光ON時の1秒あたりの光蓄積量（実際のゲーム展開を考慮して適切なペースに調整）
     weed_removal_amount: int = 2
     pest_removal_amount: int = 2
     
@@ -32,9 +32,6 @@ class GameConfig:
     environment_decay_rate: float = 0.2
     mental_decay_rate: float = 0.0
     fertilizer_amount: float = 20.0
-    # 睡眠帯（0-23 時）
-    sleep_start_hour: int = 22
-    sleep_end_hour: int = 6
     # 成長/分岐用
     growth_age_threshold_flower: float = 60.0
     # テスト用オプション

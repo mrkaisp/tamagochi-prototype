@@ -1,10 +1,52 @@
 from dataclasses import dataclass, asdict
-from typing import Optional
+from typing import Optional, Dict, Any
 from enum import Enum
+import json
+import os
+from pathlib import Path
 from ..data.save_manager import SaveManager
 from ..utils.helpers import Observable, Timer
 from ..data.config import config
 from ..utils.random_manager import get_rng
+
+
+def _load_growth_tables() -> Dict[str, Any]:
+    """成長分岐テーブルをJSONから読み込む"""
+    try:
+        # プロジェクトルートからの相対パス
+        json_path = Path(__file__).parent.parent / "data" / "growth_tables.json"
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        # フォールバック: デフォルト値を返す
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to load growth_tables.json: {e}. Using default values.")
+        return {
+            "phase2_branch": {
+                "score_ranges": [
+                    {"min": 70, "max": 100, "result": "まっすぐ"},
+                    {"min": 40, "max": 69, "result": "しなる"},
+                    {"min": 0, "max": 39, "result": "つる"}
+                ],
+                "default": "ふつう",
+                "seed_biases": {"太陽": 5, "月": 0, "風": 2, "雨": 2},
+                "mental_bonus": {"threshold": 70, "bonus": 5}
+            },
+            "phase3_shape": {
+                "seed_base_values": {"太陽": 10, "月": 5, "風": 5, "雨": 10},
+                "phase2_branch_values": {"まっすぐ": 10, "しなる": 5, "つる": 0, "ふつう": 0},
+                "light_tendency_values": {"陽": 5, "陰": -5},
+                "shape_candidates": [
+                    {"name": "大輪", "min_base": 20},
+                    {"name": "まるまる", "min_base": 15},
+                    {"name": "ひらひら", "min_base": 10},
+                    {"name": "ちいさめ", "min_base": 5},
+                    {"name": "とがり", "min_base": -999}
+                ],
+                "default": "ふつう"
+            }
+        }
 
 
 class SeedType(Enum):
@@ -38,6 +80,7 @@ class FlowerStats:
     # 育成要素
     water_level: float = 50.0  # 0-100 水の量（初期値を50に変更）
     light_level: float = 0.0  # 0-100 光の蓄積量（初期値は0、手動で光を与える）
+    is_light_on: bool = False  # 光ON状態（ONの間は光蓄積量が増加）
     weed_count: int = 0  # 雑草の数
     pest_count: int = 0  # 害虫の数
     environment_level: float = 0.0  # 0-100 環境
@@ -62,6 +105,11 @@ class FlowerStats:
         self.environment_level = max(
             0, self.environment_level - config.game.environment_decay_rate * dt
         )
+        
+        # 光ON状態の時は光蓄積量が増加
+        if self.is_light_on:
+            self.light_level += config.game.light_amount * dt
+            self.light_level = min(100, self.light_level)
 
         # 雑草の自然発生（低確率）
         if (
@@ -84,6 +132,9 @@ class FlowerStats:
 
     def _check_growth(self) -> None:
         """成長段階と分岐の判定"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         old_stage = self.growth_stage
         # フェーズ1（種→芽）：光49/50の境界で陰/陽傾向
         if (
@@ -92,14 +143,21 @@ class FlowerStats:
         ):
             # 決定前の光蓄積で陰/陽傾向を決める（境界49/50）
             self.light_tendency_yin = self.light_level < 50
+            tendency = "陰" if self.light_tendency_yin else "陽"
+            logger.info(
+                f"[フェーズ1分岐] 種→芽: 光レベル={self.light_level:.1f} "
+                f"→ 傾向={tendency} (境界=50)"
+            )
             self.growth_stage = GrowthStage.SPROUT
             self.light_level = 0  # 成長後にリセット
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
         elif (
             self.growth_stage == GrowthStage.SPROUT
             and self.light_level >= self.light_required_for_stem
         ):
             self.growth_stage = GrowthStage.STEM
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
             # フェーズ2（芽→茎）：総合スコア帯で分岐
             self.phase2_branch = self._compute_phase2_branch()
         elif (
@@ -108,6 +166,7 @@ class FlowerStats:
         ):
             self.growth_stage = GrowthStage.BUD
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
             # フェーズ3（茎→蕾）：種×芽×茎と光傾向で形
             self.phase3_shape = self._compute_phase3_shape()
         elif self.growth_stage == GrowthStage.BUD and (
@@ -116,6 +175,7 @@ class FlowerStats:
         ):
             self.growth_stage = GrowthStage.FLOWER
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
 
         # 成長段階が変更された場合、特に花が完成した場合の処理
         if old_stage != self.growth_stage:
@@ -148,9 +208,18 @@ class FlowerStats:
         self.water_level = min(100, self.water_level + config.game.fertilizer_amount)
 
     def give_light(self, amount: float) -> None:
-        """光を与える"""
+        """光を与える（非推奨: 時間経過で蓄積する仕様に変更）"""
+        # 後方互換性のため残すが、通常は使用しない
         self.light_level += amount
         self.light_level = min(100, self.light_level)
+    
+    def turn_light_on(self) -> None:
+        """光をONにする（光蓄積量が増加する）"""
+        self.is_light_on = True
+    
+    def turn_light_off(self) -> None:
+        """光をOFFにする（光蓄積量は維持される）"""
+        self.is_light_on = False
 
     def remove_weeds(self) -> None:
         """雑草を除去する"""
@@ -186,6 +255,45 @@ class FlowerStats:
         return self.growth_stage.value
 
     @property
+    def character_name(self) -> str:
+        """キャラクター名を取得"""
+        # 種タイプに基づく基本キャラクター名マッピング
+        seed_name_map = {
+            SeedType.SUN: "たんぽっち",
+            SeedType.MOON: "さくらっち",
+            SeedType.WIND: "ふじっち",
+            SeedType.RAIN: "あじさいっち",
+        }
+        
+        # 花段階の場合は、成長分岐の結果に基づいて最終進化名を返す
+        if self.growth_stage == GrowthStage.FLOWER:
+            # 成長分岐の結果に基づいて最終進化名を決定
+            # 簡易実装: 種タイプと分岐結果の組み合わせで決定
+            flower_name_map = {
+                (SeedType.SUN, "まっすぐ", "大輪"): "ひまわり",
+                (SeedType.SUN, "まっすぐ", "まるまる"): "たんぽぽ",
+                (SeedType.MOON, "しなる", "ひらひら"): "さくら",
+                (SeedType.MOON, "まっすぐ", "ほわほわ"): "ネモフィラ",
+                (SeedType.WIND, "しなる", "ながれ"): "ふじのはな",
+                (SeedType.RAIN, "曲がる", "まるまる"): "あじさい",
+            }
+            
+            # 分岐結果の組み合わせで検索
+            key = (self.seed_type, self.phase2_branch, self.phase3_shape)
+            if key in flower_name_map:
+                return flower_name_map[key]
+            
+            # デフォルト: 種タイプに基づく基本名
+            base_name = seed_name_map.get(self.seed_type, "ふらわっち")
+            # "っち"を削除して花名に変換
+            if base_name.endswith("っち"):
+                return base_name[:-2]
+            return base_name
+        
+        # 種段階以降は基本名を返す
+        return seed_name_map.get(self.seed_type, "ふらわっち")
+
+    @property
     def needs_water(self) -> bool:
         """水が必要かどうか"""
         return self.water_level < 30
@@ -219,57 +327,132 @@ class FlowerStats:
         return data
 
     def _compute_phase2_branch(self) -> str:
-        """フェーズ2分岐（70-100 まっすぐ / 40-69 しなる / 0-39 つる / その他 ふつう）"""
-        # 総合スコア: 栄養/光/環境/メンタル + 種バイアス
-        score = 0.0
-        score += min(100, self.water_level)
-        score += min(100, self.light_level)
-        score += min(100, self.environment_level)
-        score += min(100, self.mental_level)
-        score /= 4.0
-        # 種バイアス（例: 太陽は+5）
-        seed_bias = {
-            SeedType.SUN: 5,
-            SeedType.MOON: 0,
-            SeedType.WIND: 2,
-            SeedType.RAIN: 2,
-        }.get(self.seed_type, 0)
-        score += seed_bias
-        # メンタル高値バイアス
-        if self.mental_level >= 70:
-            score += 5
-        if score >= 70:
-            return "まっすぐ"
-        elif score >= 40:
-            return "しなる"
-        elif score >= 0:
-            return "つる"
-        return "ふつう"
+        """フェーズ2分岐（JSONテーブルから読み込む）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        tables = _load_growth_tables()
+        phase2_config = tables.get("phase2_branch", {})
+        
+        # 総合スコア: 栄養/光/メンタル + 種バイアス（環境整備機能削除によりenvironment_levelは使用停止）
+        base_score = 0.0
+        water_contrib = min(100, self.water_level)
+        light_contrib = min(100, self.light_level)
+        mental_contrib = min(100, self.mental_level)
+        base_score = (water_contrib + light_contrib + mental_contrib) / 3.0
+        
+        logger.info(
+            f"[フェーズ2分岐] 基本スコア計算: "
+            f"栄養={water_contrib:.1f}, 光={light_contrib:.1f}, "
+            f"メンタル={mental_contrib:.1f} → 平均={base_score:.2f}"
+        )
+        
+        # 種バイアス（JSONから読み込む）
+        seed_biases = phase2_config.get("seed_biases", {})
+        seed_bias = seed_biases.get(self.seed_type.value, 0)
+        score = base_score + seed_bias
+        
+        logger.info(
+            f"[フェーズ2分岐] 種バイアス: {self.seed_type.value}=+{seed_bias} "
+            f"→ スコア={score:.2f}"
+        )
+        
+        # メンタル高値バイアス（JSONから読み込む）
+        mental_bonus = phase2_config.get("mental_bonus", {})
+        mental_bonus_value = 0
+        if self.mental_level >= mental_bonus.get("threshold", 70):
+            mental_bonus_value = mental_bonus.get("bonus", 5)
+            score += mental_bonus_value
+            logger.info(
+                f"[フェーズ2分岐] メンタル高値バイアス: "
+                f"メンタル={self.mental_level:.1f}>=70 → +{mental_bonus_value} "
+                f"→ スコア={score:.2f}"
+            )
+        
+        # スコア範囲から結果を決定（JSONから読み込む）
+        score_ranges = phase2_config.get("score_ranges", [])
+        result = None
+        for range_config in score_ranges:
+            if range_config["min"] <= score <= range_config["max"]:
+                result = range_config["result"]
+                logger.info(
+                    f"[フェーズ2分岐] 結果決定: スコア={score:.2f} "
+                    f"→ 範囲[{range_config['min']}-{range_config['max']}] "
+                    f"→ {result}"
+                )
+                return result
+        
+        result = phase2_config.get("default", "ふつう")
+        logger.info(
+            f"[フェーズ2分岐] 結果決定: スコア={score:.2f} "
+            f"→ デフォルト → {result}"
+        )
+        return result
 
     def _compute_phase3_shape(self) -> str:
-        """フェーズ3形状（種×芽×茎と光傾向で決定）簡易版"""
+        """フェーズ3形状（JSONテーブルから読み込む）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        tables = _load_growth_tables()
+        phase3_config = tables.get("phase3_shape", {})
+        
         base = 0
-        base += 10 if self.seed_type in (SeedType.SUN, SeedType.RAIN) else 5
-        base += (
-            10
-            if self.phase2_branch == "まっすぐ"
-            else (5 if self.phase2_branch == "しなる" else 0)
+        
+        # 種ベース値（JSONから読み込む）
+        seed_base_values = phase3_config.get("seed_base_values", {})
+        seed_base = seed_base_values.get(self.seed_type.value, 5)
+        base += seed_base
+        logger.info(
+            f"[フェーズ3分岐] 種ベース値: {self.seed_type.value}=+{seed_base} "
+            f"→ ベース={base}"
         )
-        base += -5 if self.light_tendency_yin else 5
-        # 形候補
-        candidates = [
-            ("大輪", base >= 20),
-            ("まるまる", base >= 15),
-            ("ひらひら", base >= 10),
-            ("ちいさめ", base >= 5),
-            ("とがり", base < 5),
+        
+        # フェーズ2分岐値（JSONから読み込む）
+        phase2_branch_values = phase3_config.get("phase2_branch_values", {})
+        phase2_value = phase2_branch_values.get(self.phase2_branch, 0)
+        base += phase2_value
+        logger.info(
+            f"[フェーズ3分岐] フェーズ2分岐値: {self.phase2_branch}=+{phase2_value} "
+            f"→ ベース={base}"
+        )
+        
+        # 光傾向値（JSONから読み込む）
+        light_tendency_values = phase3_config.get("light_tendency_values", {})
+        light_tendency_key = "陰" if self.light_tendency_yin else "陽"
+        light_tendency_value = light_tendency_values.get(light_tendency_key, 0)
+        base += light_tendency_value
+        logger.info(
+            f"[フェーズ3分岐] 光傾向値: {light_tendency_key}=+{light_tendency_value} "
+            f"→ ベース={base}"
+        )
+        
+        # 形候補（JSONから読み込む）
+        shape_candidates = phase3_config.get("shape_candidates", [])
+        valid = [
+            candidate["name"]
+            for candidate in shape_candidates
+            if base >= candidate.get("min_base", -999)
         ]
-        valid = [name for name, ok in candidates if ok]
+        
+        logger.info(
+            f"[フェーズ3分岐] 有効候補: ベース={base} → {valid}"
+        )
+        
         if not valid:
-            return "ふつう"
+            result = phase3_config.get("default", "ふつう")
+            logger.info(
+                f"[フェーズ3分岐] 結果決定: 有効候補なし → デフォルト={result}"
+            )
+            return result
+        
         from ..utils.random_manager import get_rng
-
-        return get_rng().choice(valid)
+        result = get_rng().choice(valid)
+        logger.info(
+            f"[フェーズ3分岐] 結果決定: ベース={base}, 候補={valid} "
+            f"→ ランダム選択 → {result}"
+        )
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "FlowerStats":
@@ -287,6 +470,7 @@ class FlowerStats:
                 "age_seconds": data.get("age_seconds", 0.0),
                 "water_level": 50.0,  # 古いhungerを水レベルに変換
                 "light_level": 0.0,  # デフォルト値（光は手動で与える）
+                "is_light_on": False,  # デフォルト値（光はOFF）
                 "weed_count": 0,
                 "pest_count": 0,
                 "environment_level": 0.0,
@@ -357,10 +541,20 @@ class Flower:
         self.stats_observable.value = self.stats
 
     def give_light(self, amount: float = None) -> None:
-        """光を与える"""
+        """光を与える（非推奨: 光ON/OFFで蓄積する仕様に変更）"""
         if amount is None:
             amount = config.game.light_amount
         self.stats.give_light(amount)
+        self.stats_observable.value = self.stats
+    
+    def turn_light_on(self) -> None:
+        """光をONにする（光蓄積量が増加する）"""
+        self.stats.turn_light_on()
+        self.stats_observable.value = self.stats
+    
+    def turn_light_off(self) -> None:
+        """光をOFFにする（光蓄積量は維持される）"""
+        self.stats.turn_light_off()
         self.stats_observable.value = self.stats
 
     def remove_weeds(self) -> None:
@@ -382,8 +576,15 @@ class Flower:
     def _load_state(self) -> None:
         """状態をロード"""
         if self.save_manager:
-            data = self.save_manager.load()
-            if data:
+            save_data = self.save_manager.load()
+            if save_data:
+                # 新しい形式（バージョン情報付き）の場合はdataキーから取得
+                if isinstance(save_data, dict) and "data" in save_data:
+                    data = save_data["data"]
+                else:
+                    # 古い形式（直接データ）の場合はそのまま使用
+                    data = save_data
+                
                 self.stats = FlowerStats.from_dict(data)
                 self.stats_observable.value = self.stats
 

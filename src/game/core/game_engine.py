@@ -35,6 +35,11 @@ class GameEngine:
         self.time_scale = 1.0
         self.mode_return_timer = Timer(0.8, auto_reset=False)
         self.mode_active = False
+        
+        # パフォーマンス最適化: 早送り時の描画更新抑制
+        self._render_skip_counter = 0
+        self._frame_time_history = []  # フレームタイム履歴（最大10フレーム）
+        self._max_frame_history = 10
 
         # 行為制約
         self._nutrition_action_limit = 3
@@ -99,9 +104,6 @@ class GameEngine:
                     "light", "光", lambda: self._goto_screen(ScreenState.MODE_LIGHT)
                 ),
                 MenuItem(
-                    "env", "環境整備", lambda: self._goto_screen(ScreenState.MODE_ENV)
-                ),
-                MenuItem(
                     "settings", "設定", lambda: self._goto_screen(ScreenState.SETTINGS)
                 ),
             ]
@@ -145,14 +147,6 @@ class GameEngine:
             ]
         )
 
-        # 環境整備モード画面
-        self._cursors[ScreenState.MODE_ENV] = MenuCursor(
-            [
-                MenuItem("weeds", "雑草除去", lambda: self._perform_remove_weeds()),
-                MenuItem("pests", "害虫駆除", lambda: self._perform_remove_pests()),
-                MenuItem("back", "戻る", lambda: self._goto_screen(ScreenState.MAIN)),
-            ]
-        )
 
         # 花言葉選択画面
         self._cursors[ScreenState.FLOWER_LANGUAGE] = MenuCursor(
@@ -170,12 +164,28 @@ class GameEngine:
             ]
         )
 
-        # タイトル画面・死亡画面はカーソル不要（ボタン2で次へ）
-        self._cursors[ScreenState.TITLE] = None
+        # タイトル画面: セーブデータ選択メニュー
+        self._cursors[ScreenState.TITLE] = MenuCursor(
+            [
+                MenuItem(
+                    "new_game",
+                    "新規開始",
+                    lambda: self._start_new_game(),
+                ),
+                MenuItem(
+                    "load_game",
+                    "セーブデータから開始",
+                    lambda: self._load_save_game(),
+                ),
+            ]
+        )
+        
+        # 死亡画面はカーソル不要（ボタン2で次へ）
         self._cursors[ScreenState.DEATH] = None
 
     def _setup_event_handlers(self) -> None:
         """イベントハンドラーを設定"""
+        # 花の状態変更イベント
         self.event_manager.subscribe(EventType.FLOWER_WATERED, self._on_flower_watered)
         self.event_manager.subscribe(
             EventType.FLOWER_LIGHT_GIVEN, self._on_flower_light_given
@@ -202,6 +212,21 @@ class GameEngine:
         self.event_manager.subscribe(EventType.MENTAL_LIKE, self._on_mental_like)
         self.event_manager.subscribe(EventType.MENTAL_DISLIKE, self._on_mental_dislike)
         self.event_manager.subscribe(EventType.INVALID_ACTION, self._on_invalid_action)
+        # ナビゲーション
+        self.event_manager.subscribe(EventType.NAV_LEFT, self._on_nav_left)
+        self.event_manager.subscribe(EventType.NAV_RIGHT, self._on_nav_right)
+        self.event_manager.subscribe(EventType.NAV_CONFIRM, self._on_nav_confirm)
+        self.event_manager.subscribe(EventType.NAV_CANCEL, self._on_nav_cancel)
+        # 時間制御
+        self.event_manager.subscribe(
+            EventType.TIME_TOGGLE_PAUSE, self._on_time_toggle_pause
+        )
+        self.event_manager.subscribe(
+            EventType.TIME_SPEED_NORMAL, self._on_time_speed_normal
+        )
+        self.event_manager.subscribe(
+            EventType.TIME_SPEED_FAST, self._on_time_speed_fast
+        )
 
     def initialize(self) -> bool:
         """ゲームエンジンを初期化"""
@@ -226,6 +251,7 @@ class GameEngine:
         clock = pg.time.Clock()
 
         while self.running:
+            frame_start_time = pg.time.get_ticks()
             dt = clock.tick(config.display.fps) / 1000.0
             dt *= self.time_scale
 
@@ -238,8 +264,27 @@ class GameEngine:
                 # ゲーム状態の更新
                 self.update(dt)
 
-            # レンダリング
-            self.render()
+            # パフォーマンス最適化: 早送り時の描画更新抑制
+            should_render = True
+            if self.time_scale > 1.0:
+                # 早送り時は描画更新頻度を下げる（time_scaleに応じて）
+                render_interval = max(1, int(self.time_scale))
+                self._render_skip_counter += 1
+                if self._render_skip_counter < render_interval:
+                    should_render = False
+                else:
+                    self._render_skip_counter = 0
+            
+            # レンダリング（早送り時はスキップする場合がある）
+            if should_render:
+                self.render()
+            
+            # フレームタイム計測（早送り時のみ）
+            if self.time_scale > 1.0:
+                frame_time = pg.time.get_ticks() - frame_start_time
+                self._frame_time_history.append(frame_time)
+                if len(self._frame_time_history) > self._max_frame_history:
+                    self._frame_time_history.pop(0)
 
     def update(self, dt: float) -> None:
         """ゲーム状態を更新"""
@@ -249,7 +294,6 @@ class GameEngine:
                 ScreenState.MAIN,
                 ScreenState.MODE_WATER,
                 ScreenState.MODE_LIGHT,
-                ScreenState.MODE_ENV,
                 ScreenState.STATUS
             ) 
             and not self.paused
@@ -391,9 +435,6 @@ class GameEngine:
 
     def _on_flower_light_given(self, event) -> None:
         """花に光を与えた時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_LIGHT):
             self.flower.give_light()
             self.screen_state = ScreenState.MODE_LIGHT
@@ -401,33 +442,16 @@ class GameEngine:
             self.mode_active = True
 
     def _on_flower_weeds_removed(self, event) -> None:
-        """花の雑草を除去した時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
-            self.flower.remove_weeds()
-            self.screen_state = ScreenState.MODE_ENV
-            self.mode_return_timer.reset()
-            self.mode_active = True
+        """花の雑草を除去した時の処理（削除済み）"""
+        pass
 
     def _on_flower_pests_removed(self, event) -> None:
-        """花の害虫を駆除した時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
-            self.flower.remove_pests()
-            self.screen_state = ScreenState.MODE_ENV
-            self.mode_return_timer.reset()
-            self.mode_active = True
+        """花の害虫を駆除した時の処理（削除済み）"""
+        pass
 
     def _on_fertilizer(self, event) -> None:
         if not self._can_perform_nutrition_action():
             self._emit_invalid("栄養行為は同一時間内で3回まで")
-            return
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
             return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_WATER):
             self.flower.stats.fertilize()
@@ -437,15 +461,9 @@ class GameEngine:
             self._on_nutrition_action()
 
     def _on_mental_like(self, event) -> None:
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         self.flower.stats.adjust_mental(+5)
 
     def _on_mental_dislike(self, event) -> None:
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         self.flower.stats.adjust_mental(-5)
 
     def _on_invalid_action(self, event) -> None:
@@ -521,45 +539,6 @@ class GameEngine:
         print("ログファイルをリセットしました。")
 
     # --- 画面ナビゲーション ---
-    def _setup_event_handlers(self) -> None:
-        """イベントハンドラーを設定"""
-        self.event_manager.subscribe(EventType.FLOWER_WATERED, self._on_flower_watered)
-        self.event_manager.subscribe(
-            EventType.FLOWER_LIGHT_GIVEN, self._on_flower_light_given
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_WEEDS_REMOVED, self._on_flower_weeds_removed
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_PESTS_REMOVED, self._on_flower_pests_removed
-        )
-        self.event_manager.subscribe(EventType.SEED_SELECTED, self._on_seed_selected)
-        self.event_manager.subscribe(
-            EventType.FLOWER_GROWTH_CHANGED, self._on_flower_growth_changed
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_WITHERED, self._on_flower_withered
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_COMPLETED, self._on_flower_completed
-        )
-        self.event_manager.subscribe(EventType.GAME_RESET, self._on_game_reset)
-        # ナビゲーション
-        self.event_manager.subscribe(EventType.NAV_LEFT, self._on_nav_left)
-        self.event_manager.subscribe(EventType.NAV_RIGHT, self._on_nav_right)
-        self.event_manager.subscribe(EventType.NAV_CONFIRM, self._on_nav_confirm)
-        self.event_manager.subscribe(EventType.NAV_CANCEL, self._on_nav_cancel)
-        # 時間制御
-        self.event_manager.subscribe(
-            EventType.TIME_TOGGLE_PAUSE, self._on_time_toggle_pause
-        )
-        self.event_manager.subscribe(
-            EventType.TIME_SPEED_NORMAL, self._on_time_speed_normal
-        )
-        self.event_manager.subscribe(
-            EventType.TIME_SPEED_FAST, self._on_time_speed_fast
-        )
-
     def _on_nav_left(self, event) -> None:
         """ナビゲーション左ボタン（カーソルを前へ移動）"""
         cursor = self._cursors.get(self.screen_state)
@@ -574,11 +553,8 @@ class GameEngine:
 
     def _on_nav_confirm(self, event) -> None:
         """ナビゲーション決定ボタン（カーソルで選択中の項目を実行）"""
-        # タイトル画面と死亡画面は特別処理（カーソルなし）
-        if self.screen_state == ScreenState.TITLE:
-            self.screen_state = ScreenState.SEED_SELECTION
-            return
-        elif self.screen_state == ScreenState.DEATH:
+        # 死亡画面は特別処理
+        if self.screen_state == ScreenState.DEATH:
             self.reset_game()
             return
 
@@ -587,15 +563,6 @@ class GameEngine:
         if cursor:
             cursor.select()
 
-    def _is_sleep_time(self) -> bool:
-        # 仮のゲーム内時間（分解能: 時）
-        hour = int((self.flower.stats.age_seconds // 3600) % 24)
-        start = config.game.sleep_start_hour
-        end = config.game.sleep_end_hour
-        if start <= end:
-            return start <= hour < end
-        else:
-            return hour >= start or hour < end
 
     def _can_perform_nutrition_action(self) -> bool:
         # テスト用オプション: 制限を無効化
@@ -677,6 +644,33 @@ class GameEngine:
     def _goto_screen(self, target_screen: ScreenState) -> None:
         """指定画面へ遷移"""
         self.screen_state = target_screen
+    
+    def _start_new_game(self) -> None:
+        """新規ゲームを開始"""
+        # セーブデータをリセット
+        self.flower.reset()
+        # 種選択画面へ
+        self.screen_state = ScreenState.SEED_SELECTION
+        self.seed_selection_mode = True
+        print("新規ゲームを開始します。")
+    
+    def _load_save_game(self) -> None:
+        """セーブデータからゲームを開始"""
+        if not self.flower.save_manager.has_save():
+            self._emit_info("セーブデータが見つかりません", duration=2.0)
+            return
+        
+        # セーブデータをロード（Flower._load_state()を使用）
+        self.flower._load_state()
+        
+        # ロードが成功したかチェック（statsが初期値でないことを確認）
+        if self.flower.stats.age_seconds > 0 or self.flower.stats.growth_stage.value != "種":
+            # メイン画面へ
+            self.screen_state = ScreenState.MAIN
+            self.seed_selection_mode = False
+            print("セーブデータからゲームを開始しました。")
+        else:
+            self._emit_info("セーブデータの読み込みに失敗しました", duration=2.0)
         # 画面遷移時にカーソルをリセット
         cursor = self._cursors.get(target_screen)
         if cursor:
@@ -717,58 +711,59 @@ class GameEngine:
             self._emit_info("肥料をあげました！")
 
     def _perform_light_on(self) -> None:
-        """光ON実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
-        if self.flower.stats.light_level >= 90:
-            self._emit_info("もう十分光があります")
+        """光ON実行（光蓄積量が増加する）"""
+        if self.flower.stats.is_light_on:
+            self._emit_info("すでに光はONです")
         else:
-            self.flower.give_light()
-            self._emit_info("光を当てました！")
+            self.flower.turn_light_on()
+            self._emit_info("光をONにしました")
 
     def _perform_light_off(self) -> None:
-        """光OFF実行（実装予定）"""
-        # TODO: 光OFFのイベントを追加
-        self._emit_info("光をOFFにしました")
+        """光OFF実行（光蓄積量は維持される）"""
+        if not self.flower.stats.is_light_on:
+            self._emit_info("すでに光はOFFです")
+        else:
+            self.flower.turn_light_off()
+            self._emit_info("光をOFFにしました")
 
     def _perform_remove_weeds(self) -> None:
-        """雑草除去実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
-        if self.flower.stats.weed_count == 0:
-            self._emit_info("雑草はありません")
-        else:
-            self.flower.remove_weeds()
-            self._emit_info("雑草を除去しました！")
+        """雑草除去実行（削除済み）"""
+        pass
 
     def _perform_remove_pests(self) -> None:
-        """害虫駆除実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
-        if self.flower.stats.pest_count == 0:
-            self._emit_info("害虫はいません")
-        else:
-            self.flower.remove_pests()
-            self._emit_info("害虫を駆除しました！")
+        """害虫駆除実行（削除済み）"""
+        pass
 
     def _select_flower_language_like(self) -> None:
         """花言葉選択：好き"""
         self.event_manager.emit_simple(EventType.MENTAL_LIKE)
+        self.flower.stats.adjust_mental(5.0)
         self.screen_state = ScreenState.MAIN
+        # エンディングテキストを表示
+        self._show_ending_text()
 
     def _select_flower_language_dislike(self) -> None:
         """花言葉選択：嫌い"""
         self.event_manager.emit_simple(EventType.MENTAL_DISLIKE)
+        self.flower.stats.adjust_mental(-5.0)
         self.screen_state = ScreenState.MAIN
+        # エンディングテキストを表示
+        self._show_ending_text()
+    
+    def _show_ending_text(self) -> None:
+        """エンディングテキストを表示"""
+        mental_level = self.flower.stats.mental_level
+        phase3_shape = self.flower.stats.phase3_shape
+        
+        # エンディングテキストの決定
+        if mental_level >= 70 and phase3_shape == "大輪":
+            ending_text = "あなたの愛情で、立派な花が咲きました"
+        elif mental_level < 30:
+            ending_text = "花は静かに、あなたを見つめています"
+        else:
+            ending_text = "花が咲きました。ありがとう"
+        
+        self._emit_info(ending_text)
 
     def get_current_cursor(self) -> Optional[MenuCursor]:
         """現在の画面のカーソルを取得"""
