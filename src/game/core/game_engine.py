@@ -176,6 +176,7 @@ class GameEngine:
 
     def _setup_event_handlers(self) -> None:
         """イベントハンドラーを設定"""
+        # 花の状態変更イベント
         self.event_manager.subscribe(EventType.FLOWER_WATERED, self._on_flower_watered)
         self.event_manager.subscribe(
             EventType.FLOWER_LIGHT_GIVEN, self._on_flower_light_given
@@ -202,6 +203,21 @@ class GameEngine:
         self.event_manager.subscribe(EventType.MENTAL_LIKE, self._on_mental_like)
         self.event_manager.subscribe(EventType.MENTAL_DISLIKE, self._on_mental_dislike)
         self.event_manager.subscribe(EventType.INVALID_ACTION, self._on_invalid_action)
+        # ナビゲーション
+        self.event_manager.subscribe(EventType.NAV_LEFT, self._on_nav_left)
+        self.event_manager.subscribe(EventType.NAV_RIGHT, self._on_nav_right)
+        self.event_manager.subscribe(EventType.NAV_CONFIRM, self._on_nav_confirm)
+        self.event_manager.subscribe(EventType.NAV_CANCEL, self._on_nav_cancel)
+        # 時間制御
+        self.event_manager.subscribe(
+            EventType.TIME_TOGGLE_PAUSE, self._on_time_toggle_pause
+        )
+        self.event_manager.subscribe(
+            EventType.TIME_SPEED_NORMAL, self._on_time_speed_normal
+        )
+        self.event_manager.subscribe(
+            EventType.TIME_SPEED_FAST, self._on_time_speed_fast
+        )
 
     def initialize(self) -> bool:
         """ゲームエンジンを初期化"""
@@ -521,45 +537,6 @@ class GameEngine:
         print("ログファイルをリセットしました。")
 
     # --- 画面ナビゲーション ---
-    def _setup_event_handlers(self) -> None:
-        """イベントハンドラーを設定"""
-        self.event_manager.subscribe(EventType.FLOWER_WATERED, self._on_flower_watered)
-        self.event_manager.subscribe(
-            EventType.FLOWER_LIGHT_GIVEN, self._on_flower_light_given
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_WEEDS_REMOVED, self._on_flower_weeds_removed
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_PESTS_REMOVED, self._on_flower_pests_removed
-        )
-        self.event_manager.subscribe(EventType.SEED_SELECTED, self._on_seed_selected)
-        self.event_manager.subscribe(
-            EventType.FLOWER_GROWTH_CHANGED, self._on_flower_growth_changed
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_WITHERED, self._on_flower_withered
-        )
-        self.event_manager.subscribe(
-            EventType.FLOWER_COMPLETED, self._on_flower_completed
-        )
-        self.event_manager.subscribe(EventType.GAME_RESET, self._on_game_reset)
-        # ナビゲーション
-        self.event_manager.subscribe(EventType.NAV_LEFT, self._on_nav_left)
-        self.event_manager.subscribe(EventType.NAV_RIGHT, self._on_nav_right)
-        self.event_manager.subscribe(EventType.NAV_CONFIRM, self._on_nav_confirm)
-        self.event_manager.subscribe(EventType.NAV_CANCEL, self._on_nav_cancel)
-        # 時間制御
-        self.event_manager.subscribe(
-            EventType.TIME_TOGGLE_PAUSE, self._on_time_toggle_pause
-        )
-        self.event_manager.subscribe(
-            EventType.TIME_SPEED_NORMAL, self._on_time_speed_normal
-        )
-        self.event_manager.subscribe(
-            EventType.TIME_SPEED_FAST, self._on_time_speed_fast
-        )
-
     def _on_nav_left(self, event) -> None:
         """ナビゲーション左ボタン（カーソルを前へ移動）"""
         cursor = self._cursors.get(self.screen_state)

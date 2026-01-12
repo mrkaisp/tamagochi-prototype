@@ -22,8 +22,8 @@ class TestFlowerStats(unittest.TestCase):
         self.assertEqual(self.stats.seed_type, SeedType.SUN)
         self.assertEqual(self.stats.growth_stage, GrowthStage.SEED)
         self.assertEqual(self.stats.age_seconds, 0.0)
-        self.assertEqual(self.stats.water_level, 0.0)  # 現在の仕様: 初期値0
-        self.assertEqual(self.stats.light_level, 50.0)  # 現在の仕様: 初期値50
+        self.assertEqual(self.stats.water_level, 50.0)  # 現在の仕様: 初期値50（栄養）
+        self.assertEqual(self.stats.light_level, 0.0)  # 現在の仕様: 初期値0（手動で与える）
         self.assertEqual(self.stats.weed_count, 0)
         self.assertEqual(self.stats.pest_count, 0)
 
