@@ -598,6 +598,9 @@ class GameEngine:
             return hour >= start or hour < end
 
     def _can_perform_nutrition_action(self) -> bool:
+        # テスト用オプション: 制限を無効化
+        if config.game.nutrition_limit_disabled:
+            return True
         # 1時間内：3回まで
         return self._nutrition_actions_in_current_hour < self._nutrition_action_limit
 
@@ -613,7 +616,8 @@ class GameEngine:
             self._emit_info("今はこれ以上栄養行為ができません")
 
     def _emit_invalid(self, message: str) -> None:
-        self.event_manager.emit_simple(EventType.INVALID_ACTION, message=message)
+        self._invalid_message = message
+        self._invalid_message_timer = 2.0
 
     def _emit_info(self, message: str, duration: float = 2.0) -> None:
         self._info_message = message

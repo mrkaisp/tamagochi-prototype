@@ -159,19 +159,19 @@ docker-compose -f docker-compose.macwin.yml up --build
 ## 🌸 開発者向け重要情報
 
 ### 描画制約（必須）
-**必ず128ピクセル×128ピクセルの論理解像度で描画してください。**
+**必ず240ピクセル×240ピクセルの論理解像度で描画してください。**
 
-- ゲームの論理解像度は128×128ピクセルに固定
+- ゲームの論理解像度は240×240ピクセルに固定
 - すべてのUI要素、キャラクター、テキストはこの範囲内に収める必要
-- 物理的な画面サイズは4倍スケール（512×512ピクセル）で表示されるが、描画座標は128×128の範囲で計算
+- 物理的な画面サイズは4倍スケール（960×960ピクセル）で表示されるが、描画座標は240×240の範囲で計算
 
 ```python
-# 正しい例：128×128の範囲内
+# 正しい例：240×240の範囲内
 pg.draw.rect(surface, color, (10, 10, 20, 20))  # 左上付近
-pg.draw.rect(surface, color, (100, 100, 25, 25))  # 右下付近
+pg.draw.rect(surface, color, (200, 200, 25, 25))  # 右下付近
 
-# 間違った例：128×128の範囲外
-pg.draw.rect(surface, color, (200, 200, 50, 50))  # 範囲外
+# 間違った例：240×240の範囲外
+pg.draw.rect(surface, color, (300, 300, 50, 50))  # 範囲外
 ```
 
 ### プロジェクト構造
@@ -260,12 +260,20 @@ src/
 @dataclass
 class GameConfig:
     # ゲームバランス調整
-    water_decay_rate: float = 0.5        # 水の自然減少率
-    water_amount: float = 30.0           # 水やりの効果量
-    light_amount: float = 10.0           # 光の効果量
+    water_decay_rate: float = 0.2        # 水の自然減少率（1秒あたり）
+    water_amount: float = 20.0            # 水やりの効果量
+    light_amount: float = 15.0            # 光の効果量
     weed_removal_amount: int = 2         # 雑草除去の効果量
     pest_removal_amount: int = 2         # 害虫駆除の効果量
+    
+    # テスト用オプション
+    nutrition_limit_disabled: bool = False  # Trueにすると1時間3回制限を無効化
 ```
+
+**テスト用オプションの使い方:**
+- `nutrition_limit_disabled = True` に設定すると、栄養行為（水やり/餌やり）の1時間3回制限が無効化されます
+- テスト時に何回でも栄養行為を実行できるようになります
+- 本番環境では `False` のままにしてください
 
 ## 🛠️ 技術スタック
 
@@ -309,7 +317,7 @@ git reset --hard origin/main
   - ナビゲーション（←/→/Enter/Backspace）が期待通り
   - 時間制御（T/9/0）が表示と挙動に反映
 - 表示
-  - 128×128 論理解像度で UI が収まっている
+  - 240×240 論理解像度で UI が収まっている
   - ステータス/設定/モード画面の表記が崩れていない
 - データ
   - 自動セーブ/リセットの動作確認
