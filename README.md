@@ -276,6 +276,12 @@ class GameConfig:
 - テスト時に何回でも栄養行為を実行できるようになります
 - 本番環境では `False` のままにしてください
 
+**テスト用オプションの実行方法:**
+1. `src/game/data/config.py` を開く
+2. `GameConfig` クラスの `nutrition_limit_disabled` を `True` に変更
+3. ゲームを起動: `python -m src.main`
+4. テスト完了後、`nutrition_limit_disabled` を `False` に戻す
+
 ## 🛠️ 技術スタック
 
 - **Python 3.11**: メイン言語

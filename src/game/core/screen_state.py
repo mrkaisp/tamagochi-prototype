@@ -11,7 +11,6 @@ class ScreenState(Enum):
     STATUS = auto()
     MODE_WATER = auto()
     MODE_LIGHT = auto()
-    MODE_ENV = auto()
     FLOWER_LANGUAGE = auto()
     DEATH = auto()
 

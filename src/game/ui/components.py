@@ -433,12 +433,20 @@ class Text(UIComponent):
     """テキストコンポーネント（美咲フォント対応）"""
     
     def __init__(self, rect: Rect, text: str = "", font_size: int = 8,
-                 color: Tuple[int, int, int] = Colors.BLACK):
+                 color: Tuple[int, int, int] = Colors.BLACK, center: bool = False):
         super().__init__(rect)
         self.text = text
-        # フォントサイズは8か16のどちらかのみ
-        self.font_size = 8 if font_size <= 8 else 16
+        # フォントサイズ: 8, 16, 24, 32から選択
+        if font_size <= 8:
+            self.font_size = 8
+        elif font_size <= 16:
+            self.font_size = 16
+        elif font_size <= 24:
+            self.font_size = 24
+        else:
+            self.font_size = 32
         self.color = color
+        self.center = center  # 中央揃えフラグ
         self._font_manager = get_font_manager()
         # 240×240画面に最適化されたデフォルトサイズ
         self._optimal_size = self._font_manager.get_optimal_font_size(
@@ -466,8 +474,14 @@ class Text(UIComponent):
             )
             
             if text_surface:
-                x = int(self.rect.x)
-                y = int(self.rect.y)
+                if self.center:
+                    # 中央揃え: テキストの幅と高さを取得して中央に配置
+                    text_width, text_height = text_surface.get_size()
+                    x = int(self.rect.x + (self.rect.width - text_width) // 2)
+                    y = int(self.rect.y + (self.rect.height - text_height) // 2)
+                else:
+                    x = int(self.rect.x)
+                    y = int(self.rect.y)
                 surface.blit(text_surface, (x, y))
             else:
                 # フォールバック: 最小サイズ（8×8ピクセル）で再試行
@@ -475,8 +489,13 @@ class Text(UIComponent):
                     self.text, 8, self.color
                 )
                 if fallback_surface:
-                    x = int(self.rect.x)
-                    y = int(self.rect.y)
+                    if self.center:
+                        text_width, text_height = fallback_surface.get_size()
+                        x = int(self.rect.x + (self.rect.width - text_width) // 2)
+                        y = int(self.rect.y + (self.rect.height - text_height) // 2)
+                    else:
+                        x = int(self.rect.x)
+                        y = int(self.rect.y)
                     surface.blit(fallback_surface, (x, y))
                     
         except Exception as e:

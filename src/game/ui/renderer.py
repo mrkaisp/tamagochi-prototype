@@ -8,8 +8,8 @@ from .menu_system import MenuCursor, MenuItem
 
 # 定数定義
 DISPLAY_MARGIN = 2
-DISPLAY_WIDTH = 236
-DISPLAY_HEIGHT = 236
+DISPLAY_WIDTH = 240
+DISPLAY_HEIGHT = 240
 DIGITAL_CLOCK_WIDTH = 20
 DIGITAL_CLOCK_HEIGHT = 6
 
@@ -24,8 +24,8 @@ class UIRenderer:
     def _setup_components(self) -> None:
         """UIコンポーネントを設定"""
         # 花のスプライト（キャラクター表示 - 表情で状態を表現）
-        # 240×240画面の中央に配置、サイズを拡大
-        self.flower_sprite = Icon(Rect(80, 80, 80, 80), "flower")
+        # 240×240画面の中央に配置、種段階は120×120に拡大（画面全体に対して大きく表示）
+        self.flower_sprite = Icon(Rect(60, 60, 120, 120), "flower")
 
         # 種選択画面用
         self.seed_selection_title = Text(
@@ -61,8 +61,6 @@ class UIRenderer:
             self._render_mode(surface, game_state, "水やり")
         elif screen_state == "MODE_LIGHT":
             self._render_mode(surface, game_state, "光")
-        elif screen_state == "MODE_ENV":
-            self._render_mode(surface, game_state, "環境整備")
         elif screen_state == "FLOWER_LANGUAGE":
             self._render_flower_language(surface, game_state)
         elif screen_state == "DEATH":
@@ -86,7 +84,9 @@ class UIRenderer:
         )
 
     def _render_title(self, surface: pg.Surface) -> None:
-        title = Text(Rect(50, 100, 140, 40), "ふらわっち", 20)
+        # 240×240画面の中央に配置、中央揃えを使用
+        # 文字サイズを32pxに拡大（1.54インチモニターで可読性確保）
+        title = Text(Rect(0, 100, 240, 40), "ふらわっち", 32, center=True)
         title.render(surface)
 
     def _render_time_setting(
@@ -130,9 +130,9 @@ class UIRenderer:
             pg.draw.line(surface, (color_val, color_val + 15, color_val + 10), (0, i), (240, i))
         
         # タイトルバー
-        pg.draw.rect(surface, (20, 35, 30), (0, 0, 240, 30))
-        pg.draw.line(surface, (100, 200, 150), (0, 30), (240, 30), 2)
-        title = Text(Rect(20, 8, 200, 22), "詳細ステータス", 12)
+        pg.draw.rect(surface, (20, 35, 30), (0, 0, 240, 40))
+        pg.draw.line(surface, (100, 200, 150), (0, 40), (240, 40), 2)
+        title = Text(Rect(0, 8, 240, 32), "詳細ステータス", 24, center=True)
         title.color = (200, 255, 220)
         title.render(surface)
         
@@ -143,19 +143,19 @@ class UIRenderer:
         pg.draw.rect(surface, (45, 65, 55), (8, y, 224, 52))
         pg.draw.rect(surface, (120, 180, 150), (8, y, 224, 52), 2)
         
-        seed_text = Text(Rect(16, y + 6, 120, 15), f"{flower_stats.get('seed_type', '未選択')}", 8)
+        seed_text = Text(Rect(16, y + 6, 208, 20), f"{flower_stats.get('seed_type', '未選択')}", 16)
         seed_text.color = (255, 255, 150)
         seed_text.render(surface)
         
-        stage_text = Text(Rect(16, y + 22, 210, 15), f"成長: {flower_stats.get('growth_stage', '不明')}", 8)
+        stage_text = Text(Rect(16, y + 28, 208, 20), f"成長: {flower_stats.get('growth_stage', '不明')}", 16)
         stage_text.color = (200, 255, 200)
         stage_text.render(surface)
         
-        age_text = Text(Rect(16, y + 38, 210, 15), f"年齢: {flower_stats.get('age_formatted', '0秒')}", 8)
+        age_text = Text(Rect(16, y + 50, 208, 20), f"年齢: {flower_stats.get('age_formatted', '0秒')}", 16)
         age_text.color = (180, 220, 255)
         age_text.render(surface)
         
-        y += 60
+        y += 70
         
         # ステータスバー
         water_level = flower_stats.get('water_level', 0)
@@ -164,13 +164,13 @@ class UIRenderer:
         mental_level = flower_stats.get('mental_level', 0)
         
         self._render_modern_stat(surface, 8, y, "水分", water_level, (100, 180, 255))
-        y += 24
+        y += 28
         self._render_modern_stat(surface, 8, y, "光量", light_level, (255, 220, 100))
-        y += 24
+        y += 28
         self._render_modern_stat(surface, 8, y, "環境", env_level, (120, 220, 150))
-        y += 24
+        y += 28
         self._render_modern_stat(surface, 8, y, "心情", mental_level, (255, 150, 200))
-        y += 30
+        y += 35
         
         # 問題表示
         weed_count = flower_stats.get('weed_count', 0)
@@ -191,15 +191,15 @@ class UIRenderer:
     
     def _render_modern_stat(self, surface: pg.Surface, x: int, y: int, label: str, value: float, color: tuple) -> None:
         """モダンなステータス表示"""
-        label_text = Text(Rect(x + 8, y, 52, 15), label, 8)
+        label_text = Text(Rect(x + 8, y, 60, 20), label, 16)
         label_text.color = (180, 180, 180)
         label_text.render(surface)
         
-        value_text = Text(Rect(x + 60, y, 48, 15), f"{value:.0f}%", 8)
+        value_text = Text(Rect(x + 70, y, 50, 20), f"{value:.0f}%", 16)
         value_text.color = color
         value_text.render(surface)
         
-        self._render_progress_bar(surface, x + 110, y + 2, 116, 13, value, 100)
+        self._render_progress_bar(surface, x + 120, y + 2, 110, 16, value, 100)
     
     def _render_progress_bar(self, surface: pg.Surface, x: int, y: int, width: int, height: int, value: float, max_value: float) -> None:
         """プログレスバーを10段階で描画"""
@@ -293,6 +293,13 @@ class UIRenderer:
             Rect(150, 10, 80, 18), ("PAUSE" if paused else f"x{int(scale)}"), 8
         )
         time_text.render(surface)
+        
+        # 時計表示（ゲーム内時間をデジタル時計形式で表示）
+        flower_stats = game_state.get("flower_stats")
+        if flower_stats:
+            clock_text = flower_stats.age_digital
+            clock_display = Text(Rect(10, 10, 80, 18), clock_text, 8)
+            clock_display.render(surface)
 
         # 操作メッセージ表示
         info = game_state.get("info_message", "")
@@ -327,6 +334,11 @@ class UIRenderer:
         # 成長段階に応じてスプライト名を設定
         sprite_name = self._get_sprite_name(stats)
         self.flower_sprite.set_icon(sprite_name)
+        # 成長段階に応じてサイズを調整（種段階は120×120、それ以外は100×100）
+        if stats.growth_stage == GrowthStage.SEED:
+            self.flower_sprite.rect = Rect(60, 60, 120, 120)
+        else:
+            self.flower_sprite.rect = Rect(70, 70, 100, 100)
         # 状態情報を渡して擬人化キャラクターを描画
         self.flower_sprite.set_character_state(stats)
 

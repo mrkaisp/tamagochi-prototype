@@ -99,9 +99,6 @@ class GameEngine:
                     "light", "光", lambda: self._goto_screen(ScreenState.MODE_LIGHT)
                 ),
                 MenuItem(
-                    "env", "環境整備", lambda: self._goto_screen(ScreenState.MODE_ENV)
-                ),
-                MenuItem(
                     "settings", "設定", lambda: self._goto_screen(ScreenState.SETTINGS)
                 ),
             ]
@@ -145,14 +142,6 @@ class GameEngine:
             ]
         )
 
-        # 環境整備モード画面
-        self._cursors[ScreenState.MODE_ENV] = MenuCursor(
-            [
-                MenuItem("weeds", "雑草除去", lambda: self._perform_remove_weeds()),
-                MenuItem("pests", "害虫駆除", lambda: self._perform_remove_pests()),
-                MenuItem("back", "戻る", lambda: self._goto_screen(ScreenState.MAIN)),
-            ]
-        )
 
         # 花言葉選択画面
         self._cursors[ScreenState.FLOWER_LANGUAGE] = MenuCursor(
@@ -265,7 +254,6 @@ class GameEngine:
                 ScreenState.MAIN,
                 ScreenState.MODE_WATER,
                 ScreenState.MODE_LIGHT,
-                ScreenState.MODE_ENV,
                 ScreenState.STATUS
             ) 
             and not self.paused
@@ -407,9 +395,6 @@ class GameEngine:
 
     def _on_flower_light_given(self, event) -> None:
         """花に光を与えた時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_LIGHT):
             self.flower.give_light()
             self.screen_state = ScreenState.MODE_LIGHT
@@ -417,33 +402,16 @@ class GameEngine:
             self.mode_active = True
 
     def _on_flower_weeds_removed(self, event) -> None:
-        """花の雑草を除去した時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
-            self.flower.remove_weeds()
-            self.screen_state = ScreenState.MODE_ENV
-            self.mode_return_timer.reset()
-            self.mode_active = True
+        """花の雑草を除去した時の処理（削除済み）"""
+        pass
 
     def _on_flower_pests_removed(self, event) -> None:
-        """花の害虫を駆除した時の処理"""
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_ENV):
-            self.flower.remove_pests()
-            self.screen_state = ScreenState.MODE_ENV
-            self.mode_return_timer.reset()
-            self.mode_active = True
+        """花の害虫を駆除した時の処理（削除済み）"""
+        pass
 
     def _on_fertilizer(self, event) -> None:
         if not self._can_perform_nutrition_action():
             self._emit_invalid("栄養行為は同一時間内で3回まで")
-            return
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
             return
         if self.screen_state in (ScreenState.MAIN, ScreenState.MODE_WATER):
             self.flower.stats.fertilize()
@@ -453,15 +421,9 @@ class GameEngine:
             self._on_nutrition_action()
 
     def _on_mental_like(self, event) -> None:
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         self.flower.stats.adjust_mental(+5)
 
     def _on_mental_dislike(self, event) -> None:
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
         self.flower.stats.adjust_mental(-5)
 
     def _on_invalid_action(self, event) -> None:
@@ -564,15 +526,6 @@ class GameEngine:
         if cursor:
             cursor.select()
 
-    def _is_sleep_time(self) -> bool:
-        # 仮のゲーム内時間（分解能: 時）
-        hour = int((self.flower.stats.age_seconds // 3600) % 24)
-        start = config.game.sleep_start_hour
-        end = config.game.sleep_end_hour
-        if start <= end:
-            return start <= hour < end
-        else:
-            return hour >= start or hour < end
 
     def _can_perform_nutrition_action(self) -> bool:
         # テスト用オプション: 制限を無効化
@@ -695,11 +648,6 @@ class GameEngine:
 
     def _perform_light_on(self) -> None:
         """光ON実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
         if self.flower.stats.light_level >= 90:
             self._emit_info("もう十分光があります")
         else:
@@ -712,30 +660,12 @@ class GameEngine:
         self._emit_info("光をOFFにしました")
 
     def _perform_remove_weeds(self) -> None:
-        """雑草除去実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
-        if self.flower.stats.weed_count == 0:
-            self._emit_info("雑草はありません")
-        else:
-            self.flower.remove_weeds()
-            self._emit_info("雑草を除去しました！")
+        """雑草除去実行（削除済み）"""
+        pass
 
     def _perform_remove_pests(self) -> None:
-        """害虫駆除実行"""
-        # 睡眠時間チェック
-        if self._is_sleep_time():
-            self._emit_invalid("睡眠中は操作できません")
-            return
-        
-        if self.flower.stats.pest_count == 0:
-            self._emit_info("害虫はいません")
-        else:
-            self.flower.remove_pests()
-            self._emit_info("害虫を駆除しました！")
+        """害虫駆除実行（削除済み）"""
+        pass
 
     def _select_flower_language_like(self) -> None:
         """花言葉選択：好き"""

@@ -40,10 +40,10 @@ class FontManager:
                 print("pygame.fontが初期化されていません。遅延初期化を行います。")
                 return
             
-            # 240×240画面に最適化されたサイズを定義
-            # 美咲フォントは8×8ドットで、最低文字サイズは8×8ピクセル
-            # フォントサイズは8か16のどちらかのみ
-            font_sizes = [8, 16]
+            # 240×240画面、1.54インチモニターに最適化されたサイズを定義
+            # 可読性を確保するため、より大きなフォントサイズを追加
+            # フォントサイズ: 8, 16, 24, 32
+            font_sizes = [8, 16, 24, 32]
             
             for size in font_sizes:
                 try:
@@ -79,8 +79,8 @@ class FontManager:
             "DejaVu Sans"
         ]
         
-        # フォントサイズは8か16のどちらかのみ
-        font_sizes = [8, 16]
+        # フォントサイズ: 8, 16, 24, 32
+        font_sizes = [8, 16, 24, 32]
         
         for size in font_sizes:
             for font_name in fallback_fonts:
@@ -109,11 +109,15 @@ class FontManager:
         if not self._fonts and pg.font.get_init():
             self._initialize_fonts()
         
-        # フォントサイズは8か16のどちらかのみ
+        # フォントサイズを最適化（8, 16, 24, 32から選択）
         if size <= 8:
             size = 8
-        else:
+        elif size <= 16:
             size = 16
+        elif size <= 24:
+            size = 24
+        else:
+            size = 32
         
         # 指定サイズのフォントを返す
         if size in self._fonts:
