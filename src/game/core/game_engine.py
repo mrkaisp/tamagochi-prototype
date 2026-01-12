@@ -647,17 +647,20 @@ class GameEngine:
             self._emit_info("肥料をあげました！")
 
     def _perform_light_on(self) -> None:
-        """光ON実行"""
-        if self.flower.stats.light_level >= 90:
-            self._emit_info("もう十分光があります")
+        """光ON実行（時間経過で光蓄積量が増加する）"""
+        if self.flower.stats.is_light_on:
+            self._emit_info("すでに光はONです")
         else:
-            self.flower.give_light()
-            self._emit_info("光を当てました！")
+            self.flower.turn_light_on()
+            self._emit_info("光をONにしました")
 
     def _perform_light_off(self) -> None:
-        """光OFF実行（実装予定）"""
-        # TODO: 光OFFのイベントを追加
-        self._emit_info("光をOFFにしました")
+        """光OFF実行（時間経過で光蓄積量が減少する）"""
+        if not self.flower.stats.is_light_on:
+            self._emit_info("すでに光はOFFです")
+        else:
+            self.flower.turn_light_off()
+            self._emit_info("光をOFFにしました（時間経過で減少します）")
 
     def _perform_remove_weeds(self) -> None:
         """雑草除去実行（削除済み）"""
@@ -670,12 +673,33 @@ class GameEngine:
     def _select_flower_language_like(self) -> None:
         """花言葉選択：好き"""
         self.event_manager.emit_simple(EventType.MENTAL_LIKE)
+        self.flower.stats.adjust_mental(5.0)
         self.screen_state = ScreenState.MAIN
+        # エンディングテキストを表示
+        self._show_ending_text()
 
     def _select_flower_language_dislike(self) -> None:
         """花言葉選択：嫌い"""
         self.event_manager.emit_simple(EventType.MENTAL_DISLIKE)
+        self.flower.stats.adjust_mental(-5.0)
         self.screen_state = ScreenState.MAIN
+        # エンディングテキストを表示
+        self._show_ending_text()
+    
+    def _show_ending_text(self) -> None:
+        """エンディングテキストを表示"""
+        mental_level = self.flower.stats.mental_level
+        phase3_shape = self.flower.stats.phase3_shape
+        
+        # エンディングテキストの決定
+        if mental_level >= 70 and phase3_shape == "大輪":
+            ending_text = "あなたの愛情で、立派な花が咲きました"
+        elif mental_level < 30:
+            ending_text = "花は静かに、あなたを見つめています"
+        else:
+            ending_text = "花が咲きました。ありがとう"
+        
+        self._emit_info(ending_text)
 
     def get_current_cursor(self) -> Optional[MenuCursor]:
         """現在の画面のカーソルを取得"""

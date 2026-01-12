@@ -160,28 +160,14 @@ class UIRenderer:
         # ステータスバー
         water_level = flower_stats.get('water_level', 0)
         light_level = flower_stats.get('light_level', 0)
-        env_level = flower_stats.get('environment_level', 0)
         mental_level = flower_stats.get('mental_level', 0)
         
         self._render_modern_stat(surface, 8, y, "水分", water_level, (100, 180, 255))
         y += 28
         self._render_modern_stat(surface, 8, y, "光量", light_level, (255, 220, 100))
         y += 28
-        self._render_modern_stat(surface, 8, y, "環境", env_level, (120, 220, 150))
-        y += 28
         self._render_modern_stat(surface, 8, y, "心情", mental_level, (255, 150, 200))
         y += 35
-        
-        # 問題表示
-        weed_count = flower_stats.get('weed_count', 0)
-        pest_count = flower_stats.get('pest_count', 0)
-        
-        if weed_count > 0 or pest_count > 0:
-            pg.draw.rect(surface, (80, 40, 40), (8, y, 224, 18))
-            pg.draw.rect(surface, (200, 100, 100), (8, y, 224, 18), 1)
-            problem_text = Text(Rect(16, y + 2, 210, 15), f"! 雑草:{weed_count} 害虫:{pest_count}", 8)
-            problem_text.color = (255, 200, 100)
-            problem_text.render(surface)
         
         # メニュー（「戻る」選択肢）
         menu_items = game_state.get("menu_items", [])
@@ -334,11 +320,11 @@ class UIRenderer:
         # 成長段階に応じてスプライト名を設定
         sprite_name = self._get_sprite_name(stats)
         self.flower_sprite.set_icon(sprite_name)
-        # 成長段階に応じてサイズを調整（種段階は120×120、それ以外は100×100）
+        # 成長段階に応じてサイズを調整（種段階は140×140、それ以外は120×120に拡大して表情がよく分かるように）
         if stats.growth_stage == GrowthStage.SEED:
-            self.flower_sprite.rect = Rect(60, 60, 120, 120)
+            self.flower_sprite.rect = Rect(50, 50, 140, 140)
         else:
-            self.flower_sprite.rect = Rect(70, 70, 100, 100)
+            self.flower_sprite.rect = Rect(60, 60, 120, 120)
         # 状態情報を渡して擬人化キャラクターを描画
         self.flower_sprite.set_character_state(stats)
 

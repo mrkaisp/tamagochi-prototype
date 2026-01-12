@@ -175,28 +175,20 @@ class Icon(UIComponent):
         stats = self.character_state
         growth_stage = stats.growth_stage
         
-        # 状態判定（優先順位: 栄養 > 環境 > メンタル）
+        # 状態判定（優先順位: 栄養 > メンタル）（環境整備機能削除により環境は使用停止）
         water_level = stats.water_level
-        env_level = stats.environment_level
-        weed_count = stats.weed_count
-        pest_count = stats.pest_count
         mental_level = stats.mental_level
         
-        # 栄養状態判定
+        # 栄養状態判定（栄養<20でしょんぼり表情）
         if water_level >= 60:
             nutrition_state = "good"
-        elif water_level >= 30:
+        elif water_level >= 20:
             nutrition_state = "normal"
         else:
-            nutrition_state = "weak"
+            nutrition_state = "weak"  # 栄養<20でしょんぼり表情
         
-        # 環境状態判定
-        if env_level >= 60 and weed_count == 0 and pest_count == 0:
-            env_state = "good"
-        elif env_level >= 30 and weed_count <= 2 and pest_count <= 1:
-            env_state = "normal"
-        else:
-            env_state = "bad"
+        # 環境状態判定（環境整備機能削除により使用停止、常に"normal"として扱う）
+        env_state = "normal"
         
         # メンタル状態判定
         if mental_level >= 60:
@@ -222,8 +214,8 @@ class Icon(UIComponent):
         """種の擬人化キャラクターを描画"""
         cx, cy = center
         
-        # 体（丸い種）- 240×240画面に合わせてサイズ拡大
-        body_size = 15 if nutrition == "good" else (13 if nutrition == "normal" else 11)
+        # 体（丸い種）- 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        body_size = 25 if nutrition == "good" else (22 if nutrition == "normal" else 18)
         body_y_offset = 4 if nutrition == "good" else (2 if nutrition == "normal" else 0)
         
         pg.draw.ellipse(surface, Colors.BROWN, 
@@ -256,8 +248,8 @@ class Icon(UIComponent):
         """芽の擬人化キャラクターを描画"""
         cx, cy = center
         
-        # 体（細長い）- 240×240画面に合わせてサイズ拡大
-        body_height = 22 if nutrition == "good" else (18 if nutrition == "normal" else 15)
+        # 体（細長い）- 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        body_height = 35 if nutrition == "good" else (30 if nutrition == "normal" else 25)
         body_y = cy - body_height // 2
         
         # 姿勢調整
@@ -289,8 +281,8 @@ class Icon(UIComponent):
         """茎の擬人化キャラクターを描画"""
         cx, cy = center
         
-        # 体（細長い茎）- 240×240画面に合わせてサイズ拡大
-        body_height = 30 if nutrition == "good" else (26 if nutrition == "normal" else 22)
+        # 体（細長い茎）- 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        body_height = 45 if nutrition == "good" else (40 if nutrition == "normal" else 35)
         body_y = cy - body_height // 2
         
         # 姿勢調整
@@ -333,8 +325,8 @@ class Icon(UIComponent):
         """蕾の擬人化キャラクターを描画"""
         cx, cy = center
         
-        # 体（丸みを帯びた蕾）- 240×240画面に合わせてサイズ拡大
-        bud_size = 19 if nutrition == "good" and mental == "good" else (15 if nutrition == "normal" else 11)
+        # 体（丸みを帯びた蕾）- 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        bud_size = 30 if nutrition == "good" and mental == "good" else (25 if nutrition == "normal" else 20)
         bud_y = cy - bud_size // 2
         
         # 姿勢調整
@@ -369,9 +361,9 @@ class Icon(UIComponent):
         """花の擬人化キャラクターを描画"""
         cx, cy = center
         
-        # 茎 - 240×240画面に合わせてサイズ拡大
-        stem_height = 15
-        stem_y = cy + 12
+        # 茎 - 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        stem_height = 20
+        stem_y = cy + 15
         
         # 姿勢調整
         if nutrition == "good" and env == "good" and mental == "good":
@@ -387,8 +379,8 @@ class Icon(UIComponent):
             pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx, cy - 6), 5)
             flower_y = cy - 6
         
-        # 花びら - 240×240画面に合わせてサイズ拡大
-        petal_size = 9 if nutrition == "good" and mental == "good" else (7 if nutrition == "normal" else 5)
+        # 花びら - 240×240画面に合わせてサイズ拡大（表情がよく分かるようにさらに拡大）
+        petal_size = 15 if nutrition == "good" and mental == "good" else (12 if nutrition == "normal" else 9)
         petal_count = 5
         
         if nutrition == "good" and env == "good" and mental == "good":

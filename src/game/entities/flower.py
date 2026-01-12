@@ -1,6 +1,8 @@
 from dataclasses import dataclass, asdict
-from typing import Optional
+from typing import Optional, Dict, Any
 from enum import Enum
+import json
+import os
 from ..data.save_manager import SaveManager
 from ..utils.helpers import Observable, Timer
 from ..data.config import config
@@ -38,6 +40,7 @@ class FlowerStats:
     # 育成要素
     water_level: float = 50.0  # 0-100 水の量（初期値を50に変更）
     light_level: float = 0.0  # 0-100 光の蓄積量（初期値は0、手動で光を与える）
+    is_light_on: bool = False  # 光ON状態（ONの間は時間経過で光蓄積量が増加）
     weed_count: int = 0  # 雑草の数
     pest_count: int = 0  # 害虫の数
     environment_level: float = 0.0  # 0-100 環境
@@ -62,6 +65,17 @@ class FlowerStats:
         self.environment_level = max(
             0, self.environment_level - config.game.environment_decay_rate * dt
         )
+        
+        # 光ON状態の時は時間経過で光蓄積量が増加
+        # 光OFF状態の時は時間経過で光蓄積量が減少
+        if self.is_light_on:
+            self.light_level += config.game.light_amount * dt
+            self.light_level = min(100, self.light_level)
+        else:
+            # 光OFF時は時間経過で減少（1秒あたり10.0減少）
+            if self.light_level > 0:
+                self.light_level -= 10.0 * dt
+                self.light_level = max(0, self.light_level)
 
         # 雑草の自然発生（低確率）
         if (
@@ -148,9 +162,18 @@ class FlowerStats:
         self.water_level = min(100, self.water_level + config.game.fertilizer_amount)
 
     def give_light(self, amount: float) -> None:
-        """光を与える"""
+        """光を与える（非推奨: 時間経過で蓄積する仕様に変更）"""
+        # 後方互換性のため残すが、通常は使用しない
         self.light_level += amount
         self.light_level = min(100, self.light_level)
+    
+    def turn_light_on(self) -> None:
+        """光をONにする（時間経過で光蓄積量が増加する）"""
+        self.is_light_on = True
+    
+    def turn_light_off(self) -> None:
+        """光をOFFにする（時間経過で光蓄積量が減少する）"""
+        self.is_light_on = False
 
     def remove_weeds(self) -> None:
         """雑草を除去する"""
@@ -219,56 +242,67 @@ class FlowerStats:
         return data
 
     def _compute_phase2_branch(self) -> str:
-        """フェーズ2分岐（70-100 まっすぐ / 40-69 しなる / 0-39 つる / その他 ふつう）"""
-        # 総合スコア: 栄養/光/環境/メンタル + 種バイアス
+        """フェーズ2分岐（JSONテーブルから読み込む）"""
+        tables = _load_growth_tables()
+        phase2_config = tables.get("phase2_branch", {})
+        
+        # 総合スコア: 栄養/光/メンタル + 種バイアス（環境整備機能削除によりenvironment_levelは使用停止）
         score = 0.0
         score += min(100, self.water_level)
         score += min(100, self.light_level)
-        score += min(100, self.environment_level)
         score += min(100, self.mental_level)
-        score /= 4.0
-        # 種バイアス（例: 太陽は+5）
-        seed_bias = {
-            SeedType.SUN: 5,
-            SeedType.MOON: 0,
-            SeedType.WIND: 2,
-            SeedType.RAIN: 2,
-        }.get(self.seed_type, 0)
+        score /= 3.0
+        
+        # 種バイアス（JSONから読み込む）
+        seed_biases = phase2_config.get("seed_biases", {})
+        seed_bias = seed_biases.get(self.seed_type.value, 0)
         score += seed_bias
-        # メンタル高値バイアス
-        if self.mental_level >= 70:
-            score += 5
-        if score >= 70:
-            return "まっすぐ"
-        elif score >= 40:
-            return "しなる"
-        elif score >= 0:
-            return "つる"
-        return "ふつう"
+        
+        # メンタル高値バイアス（JSONから読み込む）
+        mental_bonus = phase2_config.get("mental_bonus", {})
+        if self.mental_level >= mental_bonus.get("threshold", 70):
+            score += mental_bonus.get("bonus", 5)
+        
+        # スコア範囲から結果を決定（JSONから読み込む）
+        score_ranges = phase2_config.get("score_ranges", [])
+        for range_config in score_ranges:
+            if range_config["min"] <= score <= range_config["max"]:
+                return range_config["result"]
+        
+        return phase2_config.get("default", "ふつう")
 
     def _compute_phase3_shape(self) -> str:
-        """フェーズ3形状（種×芽×茎と光傾向で決定）簡易版"""
+        """フェーズ3形状（JSONテーブルから読み込む）"""
+        tables = _load_growth_tables()
+        phase3_config = tables.get("phase3_shape", {})
+        
         base = 0
-        base += 10 if self.seed_type in (SeedType.SUN, SeedType.RAIN) else 5
-        base += (
-            10
-            if self.phase2_branch == "まっすぐ"
-            else (5 if self.phase2_branch == "しなる" else 0)
-        )
-        base += -5 if self.light_tendency_yin else 5
-        # 形候補
-        candidates = [
-            ("大輪", base >= 20),
-            ("まるまる", base >= 15),
-            ("ひらひら", base >= 10),
-            ("ちいさめ", base >= 5),
-            ("とがり", base < 5),
+        
+        # 種ベース値（JSONから読み込む）
+        seed_base_values = phase3_config.get("seed_base_values", {})
+        base += seed_base_values.get(self.seed_type.value, 5)
+        
+        # フェーズ2分岐値（JSONから読み込む）
+        phase2_branch_values = phase3_config.get("phase2_branch_values", {})
+        base += phase2_branch_values.get(self.phase2_branch, 0)
+        
+        # 光傾向値（JSONから読み込む）
+        light_tendency_values = phase3_config.get("light_tendency_values", {})
+        light_tendency_key = "陰" if self.light_tendency_yin else "陽"
+        base += light_tendency_values.get(light_tendency_key, 0)
+        
+        # 形候補（JSONから読み込む）
+        shape_candidates = phase3_config.get("shape_candidates", [])
+        valid = [
+            candidate["name"]
+            for candidate in shape_candidates
+            if base >= candidate.get("min_base", -999)
         ]
-        valid = [name for name, ok in candidates if ok]
+        
         if not valid:
-            return "ふつう"
+            return phase3_config.get("default", "ふつう")
+        
         from ..utils.random_manager import get_rng
-
         return get_rng().choice(valid)
 
     @classmethod
@@ -287,6 +321,7 @@ class FlowerStats:
                 "age_seconds": data.get("age_seconds", 0.0),
                 "water_level": 50.0,  # 古いhungerを水レベルに変換
                 "light_level": 0.0,  # デフォルト値（光は手動で与える）
+                "is_light_on": False,  # デフォルト値（光はOFF）
                 "weed_count": 0,
                 "pest_count": 0,
                 "environment_level": 0.0,
@@ -357,10 +392,20 @@ class Flower:
         self.stats_observable.value = self.stats
 
     def give_light(self, amount: float = None) -> None:
-        """光を与える"""
+        """光を与える（非推奨: 時間経過で蓄積する仕様に変更）"""
         if amount is None:
             amount = config.game.light_amount
         self.stats.give_light(amount)
+        self.stats_observable.value = self.stats
+    
+    def turn_light_on(self) -> None:
+        """光をONにする（時間経過で光蓄積量が増加する）"""
+        self.stats.turn_light_on()
+        self.stats_observable.value = self.stats
+    
+    def turn_light_off(self) -> None:
+        """光をOFFにする（光蓄積量を減少させる）"""
+        self.stats.turn_light_off()
         self.stats_observable.value = self.stats
 
     def remove_weeds(self) -> None:
