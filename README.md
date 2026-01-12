@@ -232,7 +232,8 @@ python -m src.game.utils.screenshot_generator
   - 自然変化: 1秒あたり -0.5
   - 水やり効果: +30.0
 - **光の蓄積量 (Light Level)**: 0〜100
-  - 光を与える効果: +10.0
+  - 光ON状態の間、光蓄積量が増加する
+  - 光OFF状態では光蓄積量は維持される
   - 成長時にリセット
 - **年齢**: ゲーム開始からの経過時間
 - **成長段階**: 種→芽→茎→蕾→花
@@ -277,7 +278,7 @@ class GameConfig:
     # ゲームバランス調整
     water_decay_rate: float = 0.2        # 水の自然減少率（1秒あたり）
     water_amount: float = 20.0            # 水やりの効果量
-    light_amount: float = 15.0            # 光の効果量
+    light_amount: float = 1.0            # 光ON時の1秒あたりの光蓄積量
     
     # テスト用オプション
     nutrition_limit_disabled: bool = False  # Trueにすると1時間3回制限を無効化

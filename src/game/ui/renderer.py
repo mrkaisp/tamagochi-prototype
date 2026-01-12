@@ -42,11 +42,14 @@ class UIRenderer:
 
     def render(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         """ゲーム状態をレンダリング"""
-        # 背景をクリア
-        surface.fill(Colors.WHITE)
-
         # 画面状態によって表示を切り替え
         screen_state = game_state.get("screen_state", "MAIN")
+        
+        # メイン画面以外は白背景でクリア
+        # メイン画面は _render_game_play 内で光の状態に応じた背景色を設定
+        if screen_state != "MAIN":
+            surface.fill(Colors.WHITE)
+        
         if screen_state == "TITLE":
             self._render_title(surface, game_state)
         elif screen_state == "SEED_SELECTION":
@@ -275,6 +278,14 @@ class UIRenderer:
         flower_stats = game_state.get("flower_stats")
         if not flower_stats:
             return
+        
+        # 光の状態に応じて背景色を変更
+        if flower_stats.is_light_on:
+            # 光ON時: 明るい黄色がかった背景（光が当たっている感じ）
+            surface.fill((255, 255, 240))  # 薄い黄色
+        else:
+            # 光OFF時: 薄暗い背景（光がない感じ）
+            surface.fill((200, 200, 200))  # 薄暗いグレー
 
         # 花のスプライトを更新（表情で状態を表現）
         self._update_flower_sprite(flower_stats)
@@ -293,6 +304,12 @@ class UIRenderer:
             clock_text = flower_stats.age_digital
             clock_display = Text(Rect(10, 10, 80, 18), clock_text, 8)
             clock_display.render(surface)
+            
+            # キャラクター名を表示（メイン画面で常に表示）
+            character_name = flower_stats.character_name
+            name_text = Text(Rect(10, 28, 230, 18), character_name, 12)
+            name_text.color = Colors.BLACK
+            name_text.render(surface)
 
         # 操作メッセージ表示
         info = game_state.get("info_message", "")

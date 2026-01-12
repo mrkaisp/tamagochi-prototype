@@ -19,7 +19,7 @@ class GameConfig:
     
     # アクション効果量
     water_amount: float = 20.0  # 1回の水やりで20%増加（5回で100%）
-    light_amount: float = 15.0  # 1回の光で15%増加（約7回で100%）
+    light_amount: float = 1.0  # 光ON時の1秒あたりの光蓄積量（実際のゲーム展開を考慮して適切なペースに調整）
     weed_removal_amount: int = 2
     pest_removal_amount: int = 2
     

@@ -35,6 +35,11 @@ class GameEngine:
         self.time_scale = 1.0
         self.mode_return_timer = Timer(0.8, auto_reset=False)
         self.mode_active = False
+        
+        # パフォーマンス最適化: 早送り時の描画更新抑制
+        self._render_skip_counter = 0
+        self._frame_time_history = []  # フレームタイム履歴（最大10フレーム）
+        self._max_frame_history = 10
 
         # 行為制約
         self._nutrition_action_limit = 3
@@ -246,6 +251,7 @@ class GameEngine:
         clock = pg.time.Clock()
 
         while self.running:
+            frame_start_time = pg.time.get_ticks()
             dt = clock.tick(config.display.fps) / 1000.0
             dt *= self.time_scale
 
@@ -258,8 +264,27 @@ class GameEngine:
                 # ゲーム状態の更新
                 self.update(dt)
 
-            # レンダリング
-            self.render()
+            # パフォーマンス最適化: 早送り時の描画更新抑制
+            should_render = True
+            if self.time_scale > 1.0:
+                # 早送り時は描画更新頻度を下げる（time_scaleに応じて）
+                render_interval = max(1, int(self.time_scale))
+                self._render_skip_counter += 1
+                if self._render_skip_counter < render_interval:
+                    should_render = False
+                else:
+                    self._render_skip_counter = 0
+            
+            # レンダリング（早送り時はスキップする場合がある）
+            if should_render:
+                self.render()
+            
+            # フレームタイム計測（早送り時のみ）
+            if self.time_scale > 1.0:
+                frame_time = pg.time.get_ticks() - frame_start_time
+                self._frame_time_history.append(frame_time)
+                if len(self._frame_time_history) > self._max_frame_history:
+                    self._frame_time_history.pop(0)
 
     def update(self, dt: float) -> None:
         """ゲーム状態を更新"""
@@ -686,7 +711,7 @@ class GameEngine:
             self._emit_info("肥料をあげました！")
 
     def _perform_light_on(self) -> None:
-        """光ON実行（時間経過で光蓄積量が増加する）"""
+        """光ON実行（光蓄積量が増加する）"""
         if self.flower.stats.is_light_on:
             self._emit_info("すでに光はONです")
         else:
@@ -694,12 +719,12 @@ class GameEngine:
             self._emit_info("光をONにしました")
 
     def _perform_light_off(self) -> None:
-        """光OFF実行（時間経過で光蓄積量が減少する）"""
+        """光OFF実行（光蓄積量は維持される）"""
         if not self.flower.stats.is_light_on:
             self._emit_info("すでに光はOFFです")
         else:
             self.flower.turn_light_off()
-            self._emit_info("光をOFFにしました（時間経過で減少します）")
+            self._emit_info("光をOFFにしました")
 
     def _perform_remove_weeds(self) -> None:
         """雑草除去実行（削除済み）"""

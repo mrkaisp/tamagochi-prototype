@@ -80,7 +80,7 @@ class FlowerStats:
     # 育成要素
     water_level: float = 50.0  # 0-100 水の量（初期値を50に変更）
     light_level: float = 0.0  # 0-100 光の蓄積量（初期値は0、手動で光を与える）
-    is_light_on: bool = False  # 光ON状態（ONの間は時間経過で光蓄積量が増加）
+    is_light_on: bool = False  # 光ON状態（ONの間は光蓄積量が増加）
     weed_count: int = 0  # 雑草の数
     pest_count: int = 0  # 害虫の数
     environment_level: float = 0.0  # 0-100 環境
@@ -106,16 +106,10 @@ class FlowerStats:
             0, self.environment_level - config.game.environment_decay_rate * dt
         )
         
-        # 光ON状態の時は時間経過で光蓄積量が増加
-        # 光OFF状態の時は時間経過で光蓄積量が減少
+        # 光ON状態の時は光蓄積量が増加
         if self.is_light_on:
             self.light_level += config.game.light_amount * dt
             self.light_level = min(100, self.light_level)
-        else:
-            # 光OFF時は時間経過で減少（1秒あたり10.0減少）
-            if self.light_level > 0:
-                self.light_level -= 10.0 * dt
-                self.light_level = max(0, self.light_level)
 
         # 雑草の自然発生（低確率）
         if (
@@ -156,12 +150,14 @@ class FlowerStats:
             )
             self.growth_stage = GrowthStage.SPROUT
             self.light_level = 0  # 成長後にリセット
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
         elif (
             self.growth_stage == GrowthStage.SPROUT
             and self.light_level >= self.light_required_for_stem
         ):
             self.growth_stage = GrowthStage.STEM
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
             # フェーズ2（芽→茎）：総合スコア帯で分岐
             self.phase2_branch = self._compute_phase2_branch()
         elif (
@@ -170,6 +166,7 @@ class FlowerStats:
         ):
             self.growth_stage = GrowthStage.BUD
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
             # フェーズ3（茎→蕾）：種×芽×茎と光傾向で形
             self.phase3_shape = self._compute_phase3_shape()
         elif self.growth_stage == GrowthStage.BUD and (
@@ -178,6 +175,7 @@ class FlowerStats:
         ):
             self.growth_stage = GrowthStage.FLOWER
             self.light_level = 0
+            self.is_light_on = False  # 成長フェーズ変更時に光をOFFにする
 
         # 成長段階が変更された場合、特に花が完成した場合の処理
         if old_stage != self.growth_stage:
@@ -216,11 +214,11 @@ class FlowerStats:
         self.light_level = min(100, self.light_level)
     
     def turn_light_on(self) -> None:
-        """光をONにする（時間経過で光蓄積量が増加する）"""
+        """光をONにする（光蓄積量が増加する）"""
         self.is_light_on = True
     
     def turn_light_off(self) -> None:
-        """光をOFFにする（時間経過で光蓄積量が減少する）"""
+        """光をOFFにする（光蓄積量は維持される）"""
         self.is_light_on = False
 
     def remove_weeds(self) -> None:
@@ -255,6 +253,45 @@ class FlowerStats:
     def growth_stage_display(self) -> str:
         """成長段階を文字列で取得"""
         return self.growth_stage.value
+
+    @property
+    def character_name(self) -> str:
+        """キャラクター名を取得"""
+        # 種タイプに基づく基本キャラクター名マッピング
+        seed_name_map = {
+            SeedType.SUN: "たんぽっち",
+            SeedType.MOON: "さくらっち",
+            SeedType.WIND: "ふじっち",
+            SeedType.RAIN: "あじさいっち",
+        }
+        
+        # 花段階の場合は、成長分岐の結果に基づいて最終進化名を返す
+        if self.growth_stage == GrowthStage.FLOWER:
+            # 成長分岐の結果に基づいて最終進化名を決定
+            # 簡易実装: 種タイプと分岐結果の組み合わせで決定
+            flower_name_map = {
+                (SeedType.SUN, "まっすぐ", "大輪"): "ひまわり",
+                (SeedType.SUN, "まっすぐ", "まるまる"): "たんぽぽ",
+                (SeedType.MOON, "しなる", "ひらひら"): "さくら",
+                (SeedType.MOON, "まっすぐ", "ほわほわ"): "ネモフィラ",
+                (SeedType.WIND, "しなる", "ながれ"): "ふじのはな",
+                (SeedType.RAIN, "曲がる", "まるまる"): "あじさい",
+            }
+            
+            # 分岐結果の組み合わせで検索
+            key = (self.seed_type, self.phase2_branch, self.phase3_shape)
+            if key in flower_name_map:
+                return flower_name_map[key]
+            
+            # デフォルト: 種タイプに基づく基本名
+            base_name = seed_name_map.get(self.seed_type, "ふらわっち")
+            # "っち"を削除して花名に変換
+            if base_name.endswith("っち"):
+                return base_name[:-2]
+            return base_name
+        
+        # 種段階以降は基本名を返す
+        return seed_name_map.get(self.seed_type, "ふらわっち")
 
     @property
     def needs_water(self) -> bool:
@@ -504,19 +541,19 @@ class Flower:
         self.stats_observable.value = self.stats
 
     def give_light(self, amount: float = None) -> None:
-        """光を与える（非推奨: 時間経過で蓄積する仕様に変更）"""
+        """光を与える（非推奨: 光ON/OFFで蓄積する仕様に変更）"""
         if amount is None:
             amount = config.game.light_amount
         self.stats.give_light(amount)
         self.stats_observable.value = self.stats
     
     def turn_light_on(self) -> None:
-        """光をONにする（時間経過で光蓄積量が増加する）"""
+        """光をONにする（光蓄積量が増加する）"""
         self.stats.turn_light_on()
         self.stats_observable.value = self.stats
     
     def turn_light_off(self) -> None:
-        """光をOFFにする（光蓄積量を減少させる）"""
+        """光をOFFにする（光蓄積量は維持される）"""
         self.stats.turn_light_off()
         self.stats_observable.value = self.stats
 
