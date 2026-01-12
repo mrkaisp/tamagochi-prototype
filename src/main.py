@@ -4,8 +4,10 @@
 """
 
 import sys
+import argparse
 import logging
 from .game.core.game_engine import GameEngine
+from .game.data.config import config
 
 def setup_logging():
     """ログ設定を初期化"""
@@ -20,6 +22,31 @@ def setup_logging():
 
 def main():
     """メイン関数"""
+    # コマンドライン引数の解析
+    parser = argparse.ArgumentParser(
+        description='花の育成ゲーム『ふらわっち』',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+例:
+  python -m src.main              # デフォルト設定で実行
+  python -m src.main --seed 42     # シード42で実行（再現性確保）
+  python -m src.main --seed 12345 # シード12345で実行
+        """
+    )
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=None,
+        help='乱数シードを指定（再現性確保のため）'
+    )
+    
+    args = parser.parse_args()
+    
+    # シードが指定された場合は設定に反映
+    if args.seed is not None:
+        config.data.random_seed = args.seed
+        logging.info(f"Random seed set to: {args.seed}")
+    
     # ログ設定
     setup_logging()
     logger = logging.getLogger(__name__)
@@ -34,6 +61,8 @@ def main():
             return 1
         
         logger.info("Game engine initialized successfully")
+        if config.data.random_seed is not None:
+            logger.info(f"Using random seed: {config.data.random_seed}")
         
         # ゲームループを実行
         engine.run()

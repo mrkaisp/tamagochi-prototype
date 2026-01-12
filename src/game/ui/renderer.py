@@ -48,7 +48,7 @@ class UIRenderer:
         # 画面状態によって表示を切り替え
         screen_state = game_state.get("screen_state", "MAIN")
         if screen_state == "TITLE":
-            self._render_title(surface)
+            self._render_title(surface, game_state)
         elif screen_state == "SEED_SELECTION":
             self._render_seed_selection(surface, game_state)
         elif screen_state == "TIME_SETTING":
@@ -83,11 +83,18 @@ class UIRenderer:
             surface, menu_items, cursor_index, start_y=75, item_height=26
         )
 
-    def _render_title(self, surface: pg.Surface) -> None:
+    def _render_title(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
         # 240×240画面の中央に配置、中央揃えを使用
         # 文字サイズを32pxに拡大（1.54インチモニターで可読性確保）
-        title = Text(Rect(0, 100, 240, 40), "ふらわっち", 32, center=True)
+        title = Text(Rect(0, 80, 240, 40), "ふらわっち", 32, center=True)
         title.render(surface)
+        
+        # メニュー項目とカーソルを表示
+        menu_items = game_state.get("menu_items", [])
+        cursor_index = game_state.get("cursor_index", 0)
+        self._render_menu_items(
+            surface, menu_items, cursor_index, start_y=140, item_height=26
+        )
 
     def _render_time_setting(
         self, surface: pg.Surface, game_state: Dict[str, Any]

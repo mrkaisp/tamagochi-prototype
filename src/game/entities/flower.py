@@ -3,10 +3,50 @@ from typing import Optional, Dict, Any
 from enum import Enum
 import json
 import os
+from pathlib import Path
 from ..data.save_manager import SaveManager
 from ..utils.helpers import Observable, Timer
 from ..data.config import config
 from ..utils.random_manager import get_rng
+
+
+def _load_growth_tables() -> Dict[str, Any]:
+    """成長分岐テーブルをJSONから読み込む"""
+    try:
+        # プロジェクトルートからの相対パス
+        json_path = Path(__file__).parent.parent / "data" / "growth_tables.json"
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        # フォールバック: デフォルト値を返す
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to load growth_tables.json: {e}. Using default values.")
+        return {
+            "phase2_branch": {
+                "score_ranges": [
+                    {"min": 70, "max": 100, "result": "まっすぐ"},
+                    {"min": 40, "max": 69, "result": "しなる"},
+                    {"min": 0, "max": 39, "result": "つる"}
+                ],
+                "default": "ふつう",
+                "seed_biases": {"太陽": 5, "月": 0, "風": 2, "雨": 2},
+                "mental_bonus": {"threshold": 70, "bonus": 5}
+            },
+            "phase3_shape": {
+                "seed_base_values": {"太陽": 10, "月": 5, "風": 5, "雨": 10},
+                "phase2_branch_values": {"まっすぐ": 10, "しなる": 5, "つる": 0, "ふつう": 0},
+                "light_tendency_values": {"陽": 5, "陰": -5},
+                "shape_candidates": [
+                    {"name": "大輪", "min_base": 20},
+                    {"name": "まるまる", "min_base": 15},
+                    {"name": "ひらひら", "min_base": 10},
+                    {"name": "ちいさめ", "min_base": 5},
+                    {"name": "とがり", "min_base": -999}
+                ],
+                "default": "ふつう"
+            }
+        }
 
 
 class SeedType(Enum):
@@ -98,6 +138,9 @@ class FlowerStats:
 
     def _check_growth(self) -> None:
         """成長段階と分岐の判定"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         old_stage = self.growth_stage
         # フェーズ1（種→芽）：光49/50の境界で陰/陽傾向
         if (
@@ -106,6 +149,11 @@ class FlowerStats:
         ):
             # 決定前の光蓄積で陰/陽傾向を決める（境界49/50）
             self.light_tendency_yin = self.light_level < 50
+            tendency = "陰" if self.light_tendency_yin else "陽"
+            logger.info(
+                f"[フェーズ1分岐] 種→芽: 光レベル={self.light_level:.1f} "
+                f"→ 傾向={tendency} (境界=50)"
+            )
             self.growth_stage = GrowthStage.SPROUT
             self.light_level = 0  # 成長後にリセット
         elif (
@@ -243,36 +291,72 @@ class FlowerStats:
 
     def _compute_phase2_branch(self) -> str:
         """フェーズ2分岐（JSONテーブルから読み込む）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         tables = _load_growth_tables()
         phase2_config = tables.get("phase2_branch", {})
         
         # 総合スコア: 栄養/光/メンタル + 種バイアス（環境整備機能削除によりenvironment_levelは使用停止）
-        score = 0.0
-        score += min(100, self.water_level)
-        score += min(100, self.light_level)
-        score += min(100, self.mental_level)
-        score /= 3.0
+        base_score = 0.0
+        water_contrib = min(100, self.water_level)
+        light_contrib = min(100, self.light_level)
+        mental_contrib = min(100, self.mental_level)
+        base_score = (water_contrib + light_contrib + mental_contrib) / 3.0
+        
+        logger.info(
+            f"[フェーズ2分岐] 基本スコア計算: "
+            f"栄養={water_contrib:.1f}, 光={light_contrib:.1f}, "
+            f"メンタル={mental_contrib:.1f} → 平均={base_score:.2f}"
+        )
         
         # 種バイアス（JSONから読み込む）
         seed_biases = phase2_config.get("seed_biases", {})
         seed_bias = seed_biases.get(self.seed_type.value, 0)
-        score += seed_bias
+        score = base_score + seed_bias
+        
+        logger.info(
+            f"[フェーズ2分岐] 種バイアス: {self.seed_type.value}=+{seed_bias} "
+            f"→ スコア={score:.2f}"
+        )
         
         # メンタル高値バイアス（JSONから読み込む）
         mental_bonus = phase2_config.get("mental_bonus", {})
+        mental_bonus_value = 0
         if self.mental_level >= mental_bonus.get("threshold", 70):
-            score += mental_bonus.get("bonus", 5)
+            mental_bonus_value = mental_bonus.get("bonus", 5)
+            score += mental_bonus_value
+            logger.info(
+                f"[フェーズ2分岐] メンタル高値バイアス: "
+                f"メンタル={self.mental_level:.1f}>=70 → +{mental_bonus_value} "
+                f"→ スコア={score:.2f}"
+            )
         
         # スコア範囲から結果を決定（JSONから読み込む）
         score_ranges = phase2_config.get("score_ranges", [])
+        result = None
         for range_config in score_ranges:
             if range_config["min"] <= score <= range_config["max"]:
-                return range_config["result"]
+                result = range_config["result"]
+                logger.info(
+                    f"[フェーズ2分岐] 結果決定: スコア={score:.2f} "
+                    f"→ 範囲[{range_config['min']}-{range_config['max']}] "
+                    f"→ {result}"
+                )
+                return result
         
-        return phase2_config.get("default", "ふつう")
+        result = phase2_config.get("default", "ふつう")
+        logger.info(
+            f"[フェーズ2分岐] 結果決定: スコア={score:.2f} "
+            f"→ デフォルト → {result}"
+        )
+        return result
 
     def _compute_phase3_shape(self) -> str:
         """フェーズ3形状（JSONテーブルから読み込む）"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         tables = _load_growth_tables()
         phase3_config = tables.get("phase3_shape", {})
         
@@ -280,16 +364,31 @@ class FlowerStats:
         
         # 種ベース値（JSONから読み込む）
         seed_base_values = phase3_config.get("seed_base_values", {})
-        base += seed_base_values.get(self.seed_type.value, 5)
+        seed_base = seed_base_values.get(self.seed_type.value, 5)
+        base += seed_base
+        logger.info(
+            f"[フェーズ3分岐] 種ベース値: {self.seed_type.value}=+{seed_base} "
+            f"→ ベース={base}"
+        )
         
         # フェーズ2分岐値（JSONから読み込む）
         phase2_branch_values = phase3_config.get("phase2_branch_values", {})
-        base += phase2_branch_values.get(self.phase2_branch, 0)
+        phase2_value = phase2_branch_values.get(self.phase2_branch, 0)
+        base += phase2_value
+        logger.info(
+            f"[フェーズ3分岐] フェーズ2分岐値: {self.phase2_branch}=+{phase2_value} "
+            f"→ ベース={base}"
+        )
         
         # 光傾向値（JSONから読み込む）
         light_tendency_values = phase3_config.get("light_tendency_values", {})
         light_tendency_key = "陰" if self.light_tendency_yin else "陽"
-        base += light_tendency_values.get(light_tendency_key, 0)
+        light_tendency_value = light_tendency_values.get(light_tendency_key, 0)
+        base += light_tendency_value
+        logger.info(
+            f"[フェーズ3分岐] 光傾向値: {light_tendency_key}=+{light_tendency_value} "
+            f"→ ベース={base}"
+        )
         
         # 形候補（JSONから読み込む）
         shape_candidates = phase3_config.get("shape_candidates", [])
@@ -299,11 +398,24 @@ class FlowerStats:
             if base >= candidate.get("min_base", -999)
         ]
         
+        logger.info(
+            f"[フェーズ3分岐] 有効候補: ベース={base} → {valid}"
+        )
+        
         if not valid:
-            return phase3_config.get("default", "ふつう")
+            result = phase3_config.get("default", "ふつう")
+            logger.info(
+                f"[フェーズ3分岐] 結果決定: 有効候補なし → デフォルト={result}"
+            )
+            return result
         
         from ..utils.random_manager import get_rng
-        return get_rng().choice(valid)
+        result = get_rng().choice(valid)
+        logger.info(
+            f"[フェーズ3分岐] 結果決定: ベース={base}, 候補={valid} "
+            f"→ ランダム選択 → {result}"
+        )
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "FlowerStats":
@@ -427,8 +539,15 @@ class Flower:
     def _load_state(self) -> None:
         """状態をロード"""
         if self.save_manager:
-            data = self.save_manager.load()
-            if data:
+            save_data = self.save_manager.load()
+            if save_data:
+                # 新しい形式（バージョン情報付き）の場合はdataキーから取得
+                if isinstance(save_data, dict) and "data" in save_data:
+                    data = save_data["data"]
+                else:
+                    # 古い形式（直接データ）の場合はそのまま使用
+                    data = save_data
+                
                 self.stats = FlowerStats.from_dict(data)
                 self.stats_observable.value = self.stats
 

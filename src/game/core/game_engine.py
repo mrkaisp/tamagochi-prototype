@@ -159,8 +159,23 @@ class GameEngine:
             ]
         )
 
-        # タイトル画面・死亡画面はカーソル不要（ボタン2で次へ）
-        self._cursors[ScreenState.TITLE] = None
+        # タイトル画面: セーブデータ選択メニュー
+        self._cursors[ScreenState.TITLE] = MenuCursor(
+            [
+                MenuItem(
+                    "new_game",
+                    "新規開始",
+                    lambda: self._start_new_game(),
+                ),
+                MenuItem(
+                    "load_game",
+                    "セーブデータから開始",
+                    lambda: self._load_save_game(),
+                ),
+            ]
+        )
+        
+        # 死亡画面はカーソル不要（ボタン2で次へ）
         self._cursors[ScreenState.DEATH] = None
 
     def _setup_event_handlers(self) -> None:
@@ -513,11 +528,8 @@ class GameEngine:
 
     def _on_nav_confirm(self, event) -> None:
         """ナビゲーション決定ボタン（カーソルで選択中の項目を実行）"""
-        # タイトル画面と死亡画面は特別処理（カーソルなし）
-        if self.screen_state == ScreenState.TITLE:
-            self.screen_state = ScreenState.SEED_SELECTION
-            return
-        elif self.screen_state == ScreenState.DEATH:
+        # 死亡画面は特別処理
+        if self.screen_state == ScreenState.DEATH:
             self.reset_game()
             return
 
@@ -607,6 +619,33 @@ class GameEngine:
     def _goto_screen(self, target_screen: ScreenState) -> None:
         """指定画面へ遷移"""
         self.screen_state = target_screen
+    
+    def _start_new_game(self) -> None:
+        """新規ゲームを開始"""
+        # セーブデータをリセット
+        self.flower.reset()
+        # 種選択画面へ
+        self.screen_state = ScreenState.SEED_SELECTION
+        self.seed_selection_mode = True
+        print("新規ゲームを開始します。")
+    
+    def _load_save_game(self) -> None:
+        """セーブデータからゲームを開始"""
+        if not self.flower.save_manager.has_save():
+            self._emit_info("セーブデータが見つかりません", duration=2.0)
+            return
+        
+        # セーブデータをロード（Flower._load_state()を使用）
+        self.flower._load_state()
+        
+        # ロードが成功したかチェック（statsが初期値でないことを確認）
+        if self.flower.stats.age_seconds > 0 or self.flower.stats.growth_stage.value != "種":
+            # メイン画面へ
+            self.screen_state = ScreenState.MAIN
+            self.seed_selection_mode = False
+            print("セーブデータからゲームを開始しました。")
+        else:
+            self._emit_info("セーブデータの読み込みに失敗しました", duration=2.0)
         # 画面遷移時にカーソルをリセット
         cursor = self._cursors.get(target_screen)
         if cursor:
