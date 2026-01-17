@@ -75,20 +75,20 @@ class TestGrowthBranching(unittest.TestCase):
         self.stats._check_growth()
         self.assertEqual(self.stats.light_level, 0.0)
 
-    def test_phase2_score_range_70_100_straight(self):
+    def test_phase2_score_range_70_100_bend(self):
         """
-        仕様: 04_フェーズ2.md - フェーズ2: 総合スコア70〜100で「まっすぐ」
-        テスト: スコア70以上でまっすぐになる
+        仕様: 05_成長分岐表.md - フェーズ2: 総合スコア50〜100で「しなる」
+        テスト: スコア50以上でしなるになる
         """
         self.stats.growth_stage = GrowthStage.SPROUT
         self.stats.water_level = 100.0
         self.stats.light_level = 100.0
         self.stats.mental_level = 100.0
-        self.stats.seed_type = SeedType.SUN  # +5バイアス
+        self.stats.seed_type = SeedType.YANG  # +5バイアス
         self.stats.light_level = 40.0  # 成長条件
         self.stats._check_growth()
         self.assertEqual(self.stats.growth_stage, GrowthStage.STEM)
-        self.assertEqual(self.stats.phase2_branch, "まっすぐ")
+        self.assertEqual(self.stats.phase2_branch, "しなる")
 
     def test_phase2_score_range_40_69_bend(self):
         """
@@ -98,7 +98,7 @@ class TestGrowthBranching(unittest.TestCase):
         self.stats.growth_stage = GrowthStage.SPROUT
         self.stats.water_level = 60.0
         self.stats.mental_level = 60.0
-        self.stats.seed_type = SeedType.MOON  # +0バイアス
+        self.stats.seed_type = SeedType.YIN  # +0バイアス
         # 平均(60+60+60)/3 = 60 → しなる（40-69）
         # light_levelは成長条件（>=40）とスコア計算の両方に使用
         self.stats.light_level = 60.0  # 成長条件を満たし、スコア計算にも使用
@@ -115,19 +115,19 @@ class TestGrowthBranching(unittest.TestCase):
         self.stats.water_level = 10.0
         self.stats.light_level = 10.0
         self.stats.mental_level = 10.0
-        self.stats.seed_type = SeedType.MOON  # +0バイアス
+        self.stats.seed_type = SeedType.YIN  # +0バイアス
         self.stats.light_level = 40.0  # 成長条件
         self.stats._check_growth()
         self.assertEqual(self.stats.growth_stage, GrowthStage.STEM)
         self.assertEqual(self.stats.phase2_branch, "つる")
 
-    def test_phase2_seed_bias_sun(self):
+    def test_phase2_seed_bias_yang(self):
         """
-        仕様: 04_フェーズ2.md - 種バイアス: 太陽+5
-        テスト: 太陽種でスコアが+5される
+        仕様: 05_成長分岐表.md - 種バイアス: 陽+5
+        テスト: 陽種でスコアが+5される
         """
         self.stats.growth_stage = GrowthStage.SPROUT
-        self.stats.seed_type = SeedType.SUN
+        self.stats.seed_type = SeedType.YANG
         self.stats.water_level = 65.0
         self.stats.light_level = 40.0  # 成長条件（スコア計算にも使用）
         self.stats.mental_level = 65.0
@@ -146,7 +146,7 @@ class TestGrowthBranching(unittest.TestCase):
         self.stats.water_level = 70.0
         self.stats.light_level = 40.0  # 成長条件
         self.stats.mental_level = 70.0  # 閾値以上
-        self.stats.seed_type = SeedType.MOON  # +0バイアス
+        self.stats.seed_type = SeedType.YIN  # +0バイアス
         # 平均(70+40+70)/3 = 60 + メンタルバイアス5 = 65 → しなる（40-69）
         # まっすぐにするには平均65以上が必要: (70+70+70)/3 = 70 + メンタルバイアス5 = 75
         self.stats._check_growth()
@@ -179,10 +179,10 @@ class TestGrowthBranching(unittest.TestCase):
         テスト: フェーズ3で適切な形が決定される
         """
         self.stats.growth_stage = GrowthStage.STEM
-        self.stats.seed_type = SeedType.SUN  # +10
-        self.stats.phase2_branch = "まっすぐ"  # +10
+        self.stats.seed_type = SeedType.YANG  # +10
+        self.stats.phase2_branch = "しなる"  # +5
         self.stats.light_tendency_yin = False  # 陽 +5
-        # 合計: 10 + 10 + 5 = 25 → 大輪（min_base=20）
+        # 合計: 10 + 5 + 5 = 20 → 大輪（min_base=20）
         self.stats.light_level = 60.0  # 成長条件
         self.stats._check_growth()
         self.assertEqual(self.stats.growth_stage, GrowthStage.BUD)

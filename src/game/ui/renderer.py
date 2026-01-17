@@ -24,8 +24,8 @@ class UIRenderer:
     def _setup_components(self) -> None:
         """UIコンポーネントを設定"""
         # 花のスプライト（キャラクター表示 - 表情で状態を表現）
-        # 240×240画面の中央に配置、種段階は120×120に拡大（画面全体に対して大きく表示）
-        self.flower_sprite = Icon(Rect(60, 60, 120, 120), "flower")
+        # 240×240画面に収まるサイズで中央に配置
+        self.flower_sprite = Icon(Rect(68, 60, 104, 104), "flower")
 
         # 種選択画面用
         self.seed_selection_title = Text(
@@ -87,16 +87,38 @@ class UIRenderer:
         )
 
     def _render_title(self, surface: pg.Surface, game_state: Dict[str, Any]) -> None:
-        # 240×240画面の中央に配置、中央揃えを使用
-        # 文字サイズを32pxに拡大（1.54インチモニターで可読性確保）
-        title = Text(Rect(0, 80, 240, 40), "ふらわっち", 32, center=True)
+        # ふんわりした背景グラデーション
+        for y in range(240):
+            color = (255, 245 - y // 6, 250 - y // 5)
+            surface.fill(color, pg.Rect(0, y, 240, 1))
+
+        # 装飾フレーム
+        pg.draw.rect(surface, (230, 210, 235), (6, 6, 228, 228))
+        pg.draw.rect(surface, (180, 140, 190), (10, 10, 220, 220), 2)
+
+        # コーナーの花飾り
+        for x, y in ((26, 26), (214, 26), (26, 214), (214, 214)):
+            pg.draw.circle(surface, (255, 210, 230), (x, y), 10)
+            pg.draw.circle(surface, (255, 170, 210), (x, y), 6)
+            pg.draw.circle(surface, (255, 240, 120), (x, y), 3)
+
+        # タイトル文字（影付き）
+        title_shadow = Text(Rect(0, 74, 240, 44), "ふらわっち", 32, center=True)
+        title_shadow.color = (140, 100, 140)
+        title_shadow.render(surface)
+        title = Text(Rect(0, 70, 240, 44), "ふらわっち", 32, center=True)
+        title.color = (90, 170, 120)
         title.render(surface)
+
+        subtitle = Text(Rect(0, 108, 240, 18), "おはなをそだてよう", 12, center=True)
+        subtitle.color = (120, 120, 120)
+        subtitle.render(surface)
         
         # メニュー項目とカーソルを表示
         menu_items = game_state.get("menu_items", [])
         cursor_index = game_state.get("cursor_index", 0)
         self._render_menu_items(
-            surface, menu_items, cursor_index, start_y=140, item_height=26
+            surface, menu_items, cursor_index, start_y=150, item_height=24
         )
 
     def _render_time_setting(
@@ -342,11 +364,11 @@ class UIRenderer:
         # 成長段階に応じてスプライト名を設定
         sprite_name = self._get_sprite_name(stats)
         self.flower_sprite.set_icon(sprite_name)
-        # 成長段階に応じてサイズを調整（種段階は140×140、それ以外は120×120に拡大して表情がよく分かるように）
+        # 成長段階に応じてサイズを調整（240×240画面に収まるサイズ）
         if stats.growth_stage == GrowthStage.SEED:
-            self.flower_sprite.rect = Rect(50, 38, 140, 140)
+            self.flower_sprite.rect = Rect(64, 52, 112, 112)
         else:
-            self.flower_sprite.rect = Rect(60, 48, 120, 120)
+            self.flower_sprite.rect = Rect(72, 60, 96, 96)
         # 状態情報を渡して擬人化キャラクターを描画
         self.flower_sprite.set_character_state(stats)
 
