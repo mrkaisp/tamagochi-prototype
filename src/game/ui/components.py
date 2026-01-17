@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from ..data.config import config
 from .font_manager import get_font_manager
 from ..utils.helpers import DigitalNumberRenderer
+from .character_sprite_manager import CharacterSpriteManager
 import os
 
 # カラーパレット（ピクセルアート風）
@@ -101,6 +102,7 @@ class Icon(UIComponent):
         self.icon_type = icon_type
         # 擬人化キャラクター用の状態情報
         self.character_state = None  # FlowerStatsオブジェクトを保持
+        self._sprite_manager = CharacterSpriteManager()
     
     def set_icon(self, icon_type: str) -> None:
         """アイコンタイプを設定"""
@@ -140,7 +142,14 @@ class Icon(UIComponent):
         elif self.icon_type in ["seed", "sprout", "stem", "bud", "flower"]:
             # 擬人化キャラクターを描画
             if self.character_state:
-                self._draw_character(surface, center)
+                sprite = self._sprite_manager.get_character_surface(
+                    self.character_state, (self.rect.width, self.rect.height)
+                )
+                if sprite:
+                    sprite_rect = sprite.get_rect(center=center)
+                    surface.blit(sprite, sprite_rect)
+                else:
+                    self._draw_character(surface, center)
             else:
                 # フォールバック: 従来の描画
                 self._draw_fallback_icon(surface, center)
