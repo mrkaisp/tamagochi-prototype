@@ -262,14 +262,29 @@ class FlowerStats:
         
         # 花段階の場合は、成長分岐の結果に基づいて最終進化名を返す
         if self.growth_stage == GrowthStage.FLOWER:
-            # 成長分岐の結果に基づいて最終進化名を決定
-            # 簡易実装: 種タイプと分岐結果の組み合わせで決定
-            flower_name_map = {
-                (SeedType.YANG, "しなる", "大輪"): "ひまわり",
-                (SeedType.YANG, "しなる", "まるまる"): "たんぽぽ",
-                (SeedType.YIN, "しなる", "ひらひら"): "さくら",
-                (SeedType.YIN, "つる", "ちいさめ"): "すみれ",
+            shape_map_by_seed = {
+                SeedType.YANG: {
+                    "大輪": "ひまわり",
+                    "まるまる": "たんぽぽ",
+                    "ひらひら": "こすも",
+                    "ちいさめ": "なでしこ",
+                    "とがり": "ばら",
+                    "ふつう": "ふつう",
+                },
+                SeedType.YIN: {
+                    "大輪": "あじさい",
+                    "まるまる": "ふじ",
+                    "ひらひら": "さくら",
+                    "ちいさめ": "すみれ",
+                    "とがり": "ねも",
+                    "ふつう": "かれはな",
+                },
             }
+            flower_name_map = {}
+            for branch in ("しなる", "つる", "ふつう"):
+                for seed_type, shape_map in shape_map_by_seed.items():
+                    for shape, name in shape_map.items():
+                        flower_name_map[(seed_type, branch, shape)] = name
             
             # 分岐結果の組み合わせで検索
             key = (self.seed_type, self.phase2_branch, self.phase3_shape)
@@ -285,6 +300,11 @@ class FlowerStats:
         
         # 種段階以降は基本名を返す
         return seed_name_map.get(self.seed_type, "ふらわっち")
+
+    @property
+    def character_label(self) -> str:
+        """UI表示用のラベル（成長段階と種タイプ）"""
+        return f"{self.growth_stage.value}（{self.seed_type.value}）"
 
     @property
     def needs_water(self) -> bool:

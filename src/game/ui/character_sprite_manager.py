@@ -34,6 +34,15 @@ class CharacterSpriteManager:
         base_path = self._get_sprite_path(stats)
         if not base_path:
             return None
+        if not base_path.exists():
+            fallback_name = (
+                "normal_normal.png"
+                if stats.growth_stage in (GrowthStage.BUD, GrowthStage.FLOWER)
+                else "normal.png"
+            )
+            fallback_path = base_path.parent / fallback_name
+            if fallback_path.exists():
+                base_path = fallback_path
 
         frames = self._get_animation_frames(base_path)
         if not frames:

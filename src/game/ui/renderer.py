@@ -290,26 +290,24 @@ class UIRenderer:
         # 花のスプライトを更新（表情で状態を表現）
         self._update_flower_sprite(flower_stats)
 
-        # 右上に時間状態を表示
+        # 上部に時間・キャラ名・時間倍率を1行で表示
         paused = game_state.get("paused", False)
         scale = game_state.get("time_scale", 1.0)
-        time_text = Text(
-            Rect(150, 10, 80, 18), ("PAUSE" if paused else f"x{int(scale)}"), 8
-        )
-        time_text.render(surface)
-        
-        # 時計表示（ゲーム内時間をデジタル時計形式で表示）
         flower_stats = game_state.get("flower_stats")
         if flower_stats:
             clock_text = flower_stats.age_digital
-            clock_display = Text(Rect(10, 10, 80, 18), clock_text, 8)
+            character_label = flower_stats.character_label
+            scale_text = "PAUSE" if paused else f"x{int(scale)}"
+
+            clock_display = Text(Rect(6, 8, 60, 16), clock_text, 8)
             clock_display.render(surface)
-            
-            # キャラクター名を表示（メイン画面で常に表示）
-            character_name = flower_stats.character_name
-            name_text = Text(Rect(10, 28, 230, 18), character_name, 12)
+
+            name_text = Text(Rect(66, 8, 108, 16), character_label, 8, center=True)
             name_text.color = Colors.BLACK
             name_text.render(surface)
+
+            time_text = Text(Rect(176, 8, 58, 16), scale_text, 8, center=True)
+            time_text.render(surface)
 
         # 操作メッセージ表示
         info = game_state.get("info_message", "")
@@ -346,9 +344,9 @@ class UIRenderer:
         self.flower_sprite.set_icon(sprite_name)
         # 成長段階に応じてサイズを調整（種段階は140×140、それ以外は120×120に拡大して表情がよく分かるように）
         if stats.growth_stage == GrowthStage.SEED:
-            self.flower_sprite.rect = Rect(50, 50, 140, 140)
+            self.flower_sprite.rect = Rect(50, 38, 140, 140)
         else:
-            self.flower_sprite.rect = Rect(60, 60, 120, 120)
+            self.flower_sprite.rect = Rect(60, 48, 120, 120)
         # 状態情報を渡して擬人化キャラクターを描画
         self.flower_sprite.set_character_state(stats)
 
