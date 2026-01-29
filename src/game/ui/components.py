@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from ..data.config import config
 from .font_manager import get_font_manager
 from ..utils.helpers import DigitalNumberRenderer
+from .character_sprite_manager import CharacterSpriteManager
 import os
 
 # カラーパレット（ピクセルアート風）
@@ -101,6 +102,7 @@ class Icon(UIComponent):
         self.icon_type = icon_type
         # 擬人化キャラクター用の状態情報
         self.character_state = None  # FlowerStatsオブジェクトを保持
+        self._sprite_manager = CharacterSpriteManager()
     
     def set_icon(self, icon_type: str) -> None:
         """アイコンタイプを設定"""
@@ -140,7 +142,14 @@ class Icon(UIComponent):
         elif self.icon_type in ["seed", "sprout", "stem", "bud", "flower"]:
             # 擬人化キャラクターを描画
             if self.character_state:
-                self._draw_character(surface, center)
+                sprite = self._sprite_manager.get_character_surface(
+                    self.character_state, (self.rect.width, self.rect.height)
+                )
+                if sprite:
+                    sprite_rect = sprite.get_rect(center=center)
+                    surface.blit(sprite, sprite_rect)
+                else:
+                    self._draw_character(surface, center)
             else:
                 # フォールバック: 従来の描画
                 self._draw_fallback_icon(surface, center)
@@ -253,13 +262,13 @@ class Icon(UIComponent):
         body_y = cy - body_height // 2
         
         # 姿勢調整
-        if nutrition == "weak" or env == "bad":
+        if nutrition == "weak":
             body_y += 2  # うつむき加減
         
         pg.draw.line(surface, Colors.GREEN, (cx, cy + 10), (cx, body_y), 5)
         
         # 葉（頭部）
-        if nutrition == "good" and env == "good":
+        if nutrition == "good":
             # 葉を広げて、明るい笑顔
             pg.draw.ellipse(surface, Colors.GREEN, (cx - 8, body_y - 6, 16, 10))
             pg.draw.ellipse(surface, Colors.GREEN, (cx - 8, body_y - 6, 16, 10), 2)
@@ -286,10 +295,10 @@ class Icon(UIComponent):
         body_y = cy - body_height // 2
         
         # 姿勢調整
-        if nutrition == "good" and env == "good":
+        if nutrition == "good":
             # 背筋をピンと伸ばし
             pg.draw.line(surface, Colors.GREEN, (cx, cy + 12), (cx, body_y), 7)
-        elif nutrition == "weak" or env == "bad":
+        elif nutrition == "weak":
             # 茎が曲がる、疲れた表情
             pg.draw.line(surface, Colors.GREEN, (cx, cy + 12), (cx - 2, body_y), 5)
             body_y += 2
@@ -298,17 +307,17 @@ class Icon(UIComponent):
             pg.draw.line(surface, Colors.GREEN, (cx, cy + 12), (cx, body_y), 5)
         
         # 葉
-        if nutrition == "good" and env == "good":
+        if nutrition == "good":
             # 葉を広げる
             pg.draw.ellipse(surface, Colors.GREEN, (cx - 10, body_y - 4, 20, 12))
             pg.draw.ellipse(surface, Colors.GREEN, (cx - 6, body_y + 4, 12, 8))
-        elif nutrition == "weak" or env == "bad":
+        elif nutrition == "weak":
             # 葉が垂れる
             pg.draw.ellipse(surface, Colors.DARK_GRAY, (cx - 6, body_y, 12, 6))
         
         # 顔
         face_y = body_y - 4
-        if nutrition == "good" and env == "good":
+        if nutrition == "good":
             # 自信に満ちた表情
             pg.draw.circle(surface, Colors.BLACK, (cx - 4, face_y), 2)
             pg.draw.circle(surface, Colors.BLACK, (cx + 4, face_y), 2)
@@ -330,9 +339,9 @@ class Icon(UIComponent):
         bud_y = cy - bud_size // 2
         
         # 姿勢調整
-        if nutrition == "good" and env == "good" and mental == "good":
+        if nutrition == "good" and mental == "good":
             bud_y -= 2  # やや上向き
-        elif nutrition == "weak" or env == "bad" or mental == "low":
+        elif nutrition == "weak" or mental == "low":
             bud_y += 2  # うつむき加減
         
         # 蕾の形
@@ -344,7 +353,7 @@ class Icon(UIComponent):
         
         # 顔
         face_y = bud_y + bud_size // 2
-        if nutrition == "good" and env == "good" and mental == "good":
+        if nutrition == "good" and mental == "good":
             # 期待に満ちた表情
             pg.draw.circle(surface, Colors.BLACK, (cx - 4, face_y - 2), 2)
             pg.draw.circle(surface, Colors.BLACK, (cx + 4, face_y - 2), 2)
@@ -366,11 +375,11 @@ class Icon(UIComponent):
         stem_y = cy + 15
         
         # 姿勢調整
-        if nutrition == "good" and env == "good" and mental == "good":
+        if nutrition == "good" and mental == "good":
             # 自信に満ちた姿勢
             pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx, cy - 8), 5)
             flower_y = cy - 8
-        elif nutrition == "weak" or env == "bad" or mental == "low":
+        elif nutrition == "weak" or mental == "low":
             # やや前傾姿勢
             pg.draw.line(surface, Colors.GREEN, (cx, stem_y), (cx - 2, cy - 4), 5)
             flower_y = cy - 4
@@ -383,7 +392,7 @@ class Icon(UIComponent):
         petal_size = 15 if nutrition == "good" and mental == "good" else (12 if nutrition == "normal" else 9)
         petal_count = 5
         
-        if nutrition == "good" and env == "good" and mental == "good":
+        if nutrition == "good" and mental == "good":
             # 花びらを広げ
             for i in range(petal_count):
                 angle = i * 2 * 3.14159 / petal_count
@@ -409,7 +418,7 @@ class Icon(UIComponent):
         pg.draw.circle(surface, Colors.YELLOW, (cx, flower_y), 4)
         
         # 顔
-        if nutrition == "good" and env == "good" and mental == "good":
+        if nutrition == "good" and mental == "good":
             # 明るい笑顔
             pg.draw.circle(surface, Colors.BLACK, (cx - 4, flower_y - 2), 2)
             pg.draw.circle(surface, Colors.BLACK, (cx + 4, flower_y - 2), 2)

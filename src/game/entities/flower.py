@@ -25,17 +25,16 @@ def _load_growth_tables() -> Dict[str, Any]:
         return {
             "phase2_branch": {
                 "score_ranges": [
-                    {"min": 70, "max": 100, "result": "まっすぐ"},
-                    {"min": 40, "max": 69, "result": "しなる"},
-                    {"min": 0, "max": 39, "result": "つる"}
+                    {"min": 50, "max": 100, "result": "しなる"},
+                    {"min": 0, "max": 49, "result": "つる"}
                 ],
                 "default": "ふつう",
-                "seed_biases": {"太陽": 5, "月": 0, "風": 2, "雨": 2},
+                "seed_biases": {"陽": 5, "陰": 0},
                 "mental_bonus": {"threshold": 70, "bonus": 5}
             },
             "phase3_shape": {
-                "seed_base_values": {"太陽": 10, "月": 5, "風": 5, "雨": 10},
-                "phase2_branch_values": {"まっすぐ": 10, "しなる": 5, "つる": 0, "ふつう": 0},
+                "seed_base_values": {"陽": 10, "陰": 5},
+                "phase2_branch_values": {"しなる": 5, "つる": 0, "ふつう": 0},
                 "light_tendency_values": {"陽": 5, "陰": -5},
                 "shape_candidates": [
                     {"name": "大輪", "min_base": 20},
@@ -52,10 +51,8 @@ def _load_growth_tables() -> Dict[str, Any]:
 class SeedType(Enum):
     """種の種類"""
 
-    SUN = "太陽"
-    MOON = "月"
-    WIND = "風"
-    RAIN = "雨"
+    YIN = "陰"
+    YANG = "陽"
 
 
 class GrowthStage(Enum):
@@ -73,7 +70,7 @@ class FlowerStats:
     """花の基本統計情報"""
 
     # 基本情報
-    seed_type: SeedType = SeedType.SUN
+    seed_type: SeedType = SeedType.YANG
     growth_stage: GrowthStage = GrowthStage.SEED
     age_seconds: float = 0.0
 
@@ -259,24 +256,35 @@ class FlowerStats:
         """キャラクター名を取得"""
         # 種タイプに基づく基本キャラクター名マッピング
         seed_name_map = {
-            SeedType.SUN: "たんぽっち",
-            SeedType.MOON: "さくらっち",
-            SeedType.WIND: "ふじっち",
-            SeedType.RAIN: "あじさいっち",
+            SeedType.YIN: "陰っち",
+            SeedType.YANG: "陽っち",
         }
         
         # 花段階の場合は、成長分岐の結果に基づいて最終進化名を返す
         if self.growth_stage == GrowthStage.FLOWER:
-            # 成長分岐の結果に基づいて最終進化名を決定
-            # 簡易実装: 種タイプと分岐結果の組み合わせで決定
-            flower_name_map = {
-                (SeedType.SUN, "まっすぐ", "大輪"): "ひまわり",
-                (SeedType.SUN, "まっすぐ", "まるまる"): "たんぽぽ",
-                (SeedType.MOON, "しなる", "ひらひら"): "さくら",
-                (SeedType.MOON, "まっすぐ", "ほわほわ"): "ネモフィラ",
-                (SeedType.WIND, "しなる", "ながれ"): "ふじのはな",
-                (SeedType.RAIN, "曲がる", "まるまる"): "あじさい",
+            shape_map_by_seed = {
+                SeedType.YANG: {
+                    "大輪": "ひまわり",
+                    "まるまる": "たんぽぽ",
+                    "ひらひら": "こすも",
+                    "ちいさめ": "なでしこ",
+                    "とがり": "ばら",
+                    "ふつう": "ふつう",
+                },
+                SeedType.YIN: {
+                    "大輪": "あじさい",
+                    "まるまる": "ふじ",
+                    "ひらひら": "さくら",
+                    "ちいさめ": "すみれ",
+                    "とがり": "ねも",
+                    "ふつう": "かれはな",
+                },
             }
+            flower_name_map = {}
+            for branch in ("しなる", "つる", "ふつう"):
+                for seed_type, shape_map in shape_map_by_seed.items():
+                    for shape, name in shape_map.items():
+                        flower_name_map[(seed_type, branch, shape)] = name
             
             # 分岐結果の組み合わせで検索
             key = (self.seed_type, self.phase2_branch, self.phase3_shape)
@@ -292,6 +300,11 @@ class FlowerStats:
         
         # 種段階以降は基本名を返す
         return seed_name_map.get(self.seed_type, "ふらわっち")
+
+    @property
+    def character_label(self) -> str:
+        """UI表示用のラベル（成長段階と種タイプ）"""
+        return f"{self.growth_stage.value}（{self.seed_type.value}）"
 
     @property
     def needs_water(self) -> bool:
@@ -465,7 +478,7 @@ class FlowerStats:
             print("DEBUG: Converting old format to new format")
             # 古い形式から新しい形式への変換
             new_data = {
-                "seed_type": SeedType.SUN,  # デフォルト値
+                "seed_type": SeedType.YANG,  # デフォルト値
                 "growth_stage": GrowthStage.SEED,  # デフォルト値
                 "age_seconds": data.get("age_seconds", 0.0),
                 "water_level": 50.0,  # 古いhungerを水レベルに変換
@@ -487,7 +500,14 @@ class FlowerStats:
 
         # 文字列をEnumに変換
         if "seed_type" in data and isinstance(data["seed_type"], str):
-            data["seed_type"] = SeedType(data["seed_type"])
+            legacy_seed_map = {
+                "太陽": "陽",
+                "風": "陽",
+                "月": "陰",
+                "雨": "陰",
+            }
+            seed_value = legacy_seed_map.get(data["seed_type"], data["seed_type"])
+            data["seed_type"] = SeedType(seed_value)
         if "growth_stage" in data and isinstance(data["growth_stage"], str):
             data["growth_stage"] = GrowthStage(data["growth_stage"])
 

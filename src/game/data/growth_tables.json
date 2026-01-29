@@ -2,27 +2,20 @@
   "phase2_branch": {
     "score_ranges": [
       {
-        "min": 70,
+        "min": 50,
         "max": 100,
-        "result": "まっすぐ"
-      },
-      {
-        "min": 40,
-        "max": 69,
         "result": "しなる"
       },
       {
         "min": 0,
-        "max": 39,
+        "max": 49,
         "result": "つる"
       }
     ],
     "default": "ふつう",
     "seed_biases": {
-      "太陽": 5,
-      "月": 0,
-      "風": 2,
-      "雨": 2
+      "陽": 5,
+      "陰": 0
     },
     "mental_bonus": {
       "threshold": 70,
@@ -31,13 +24,10 @@
   },
   "phase3_shape": {
     "seed_base_values": {
-      "太陽": 10,
-      "月": 5,
-      "風": 5,
-      "雨": 10
+      "陽": 10,
+      "陰": 5
     },
     "phase2_branch_values": {
-      "まっすぐ": 10,
       "しなる": 5,
       "つる": 0,
       "ふつう": 0

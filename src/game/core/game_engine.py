@@ -68,15 +68,11 @@ class GameEngine:
         self._cursors[ScreenState.SEED_SELECTION] = MenuCursor(
             [
                 MenuItem(
-                    "sun",
-                    "太陽",
-                    lambda: self._select_seed(SeedType.SUN),
+                    "yin",
+                    "陰",
+                    lambda: self._select_seed(SeedType.YIN),
                 ),
-                MenuItem("moon", "月", lambda: self._select_seed(SeedType.MOON)),
-                MenuItem("wind", "風", lambda: self._select_seed(SeedType.WIND)),
-                MenuItem(
-                    "rain", "雨", lambda: self._select_seed(SeedType.RAIN)
-                ),
+                MenuItem("yang", "陽", lambda: self._select_seed(SeedType.YANG)),
             ]
         )
 
@@ -476,7 +472,7 @@ class GameEngine:
         if self.screen_state in (ScreenState.SEED_SELECTION, ScreenState.TITLE):
             from ..entities.flower import SeedType
 
-            seed_type_name = event.data.get("seed_type", "太陽")
+            seed_type_name = event.data.get("seed_type", "陽")
             seed_type = SeedType(seed_type_name)
             self.flower.select_seed(seed_type)
             # 次は時間設定へ
